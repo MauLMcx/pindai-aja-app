@@ -13,7 +13,7 @@
       "args": [
         "/c", "npx", "-y", "@supabase/mcp-server-supabase@latest",
         "--read-only",
-        "--project-ref=PROJECT_REF_DEV"
+        "--project-ref=rutsepsoxwmdpwfnldjq"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "<ISI_DI_ENV_LOKAL_JANGAN_COMMIT>"
