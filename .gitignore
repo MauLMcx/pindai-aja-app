@@ -1,0 +1,22 @@
+.env
+*.keystore
+tools/out/
+data/
+__pycache__/
+.venv/
+
+# Flutter / Dart
+.dart_tool/
+build/
+.idea/
+*.iml
+*.log
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+android/local.properties
+android/.gradle/
+android/.kotlin/
+
+# Native SQLite untuk tes Windows (opsional, jangan commit)
+sqlite3.dll

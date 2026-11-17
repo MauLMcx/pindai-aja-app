@@ -1,0 +1,50 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "petshop-dev": {
+        "type": "local",
+        "command": [
+          "C:\\Users\\mcx\\Documents\\app\\tools\\petshop_dev_mcp\\.venv\\Scripts\\python.exe",
+          "C:\\Users\\mcx\\Documents\\app\\tools\\petshop_dev_mcp\\server.py"
+        ],
+        "cwd": "C:\\Users\\mcx\\Documents\\app",
+        "environment": {
+          "PETSHOP_ROOT": "C:\\Users\\mcx\\Documents\\app"
+        }
+      },
+      "dart": {
+        "type": "local",
+        "command": [
+          "C:\\flutter\\bin\\cache\\dart-sdk\\bin\\dart.exe",
+          "mcp-server"
+        ],
+        "cwd": "C:\\Users\\mcx\\Documents\\app"
+      },
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp"
+      },
+      "playwright": {
+        "type": "local",
+        "command": ["cmd", "/c", "npx", "-y", "@playwright/mcp@latest"]
+      },
+      "supabase": {
+        "type": "local",
+        "command": [
+          "cmd",
+          "/c",
+          "npx",
+          "-y",
+          "@supabase/mcp-server-supabase@latest",
+          "--read-only",
+          "--project-ref=PROJECT_REF_DEV"
+        ],
+        "environment": {
+          "SUPABASE_ACCESS_TOKEN": "{env:SUPABASE_ACCESS_TOKEN}"
+        },
+        "disabled": true
+      }
+    }
+  }
+}
