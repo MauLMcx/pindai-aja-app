@@ -25,7 +25,8 @@ select set_config('test.user_b', :'user_b', true);
 select set_config('test.store_a', :'store_a', true);
 select set_config('test.store_b', :'store_b', true);
 
--- 1) Setiap tabel yang punya kolom store_id wajib mengaktifkan RLS.
+-- 1) Setiap tabel dasar di schema public wajib mengaktifkan RLS.
+--    Termasuk tabel tanpa store_id seperti `applied_ops` (deny-by-default).
 do $$
 declare
   r record;
@@ -36,13 +37,6 @@ begin
     join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public'
       and c.relkind = 'r'
-      and exists (
-        select 1
-        from information_schema.columns col
-        where col.table_schema = 'public'
-          and col.table_name = c.relname
-          and col.column_name = 'store_id'
-      )
       and not c.relrowsecurity
   loop
     raise exception 'RLS tidak aktif pada tabel %', r.table_name;
