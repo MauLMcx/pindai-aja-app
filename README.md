@@ -1,4 +1,4 @@
-# petshop_pos
+# pindai-aja-app
 
 A new Flutter project.
 
