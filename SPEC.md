@@ -258,6 +258,24 @@ create view stock_balance as
 
 **Pull:** `sync_pull(table, since_seq, limit=500)` mengembalikan baris dengan `server_seq > since_seq`. Klien melakukan upsert, lalu menyimpan `last_pulled_seq`. Ulangi sampai kosong.
 
+**Bentuk op (implementasi `0003_sync_rpc`–`0005_sync_push_robust`):**
+
+```json
+{ "op_id": "uuid", "table": "products", "row_id": "uuid",
+  "op": "insert | update | upsert | delete", "payload": { "...": "kolom baris" } }
+```
+
+`sync_push` membalas array `{ "op_id", "status": "applied | skipped | error", "error"? }`. Aturan server:
+
+- `op_id` yang sudah tercatat di `applied_ops` → `skipped` (idempoten, P8).
+- `payload.store_id` (atau `payload.id` untuk `stores`) wajib sama dengan toko pengguna; selain itu `error`.
+- `insert` memakai `on conflict (pk) do nothing`; pelanggaran unique lain (mis. barcode ganda) menghasilkan `error` dan **tidak** menimpa baris lama.
+- `delete` hanya mengisi `deleted_at`; tabel ledger tanpa `deleted_at` ditolak.
+- `profiles` tidak disinkronkan (dikelola server); daftar tabel ada di `sync_allowed_tables()`.
+- Hanya role `authenticated` yang boleh memanggil RPC; `applied_ops` tidak bisa dibaca langsung (RLS tanpa policy).
+- `sync_pull` berjalan dengan hak pengguna (RLS) dan menambahkan filter `store_id` eksplisit sebagai lapisan kedua.
+- Satu op yang gagal (termasuk `op_id` tidak valid) hanya menghasilkan `error` untuk op itu; op lain dalam batch tetap diterapkan.
+
 **Pemicu sinkron:** setelah setiap transaksi lokal, saat konektivitas kembali, saat app dibuka/kembali ke depan, dan periodik tiap beberapa menit. Realtime Supabase **tidak wajib**.
 
 **Aturan konflik:**
@@ -390,3 +408,7 @@ Multi-cabang di UI, utang ke pemasok, integrasi kartu langsung, e-commerce/marke
 | 2026-11-18 | Migrasi server dijalankan berurutan: `0001_init`, lalu `0002_security_hardening`; view `stock_balance` diubah menjadi `security_invoker` | Advisor Supabase menemukan view berjalan dengan hak pemilik sehingga bisa melewati RLS dan membocorkan stok antar-toko. View wajib mengikuti RLS pengguna |
 | 2026-11-18 | Tes RLS memakai dua pengguna Auth uji (`rls-test-a@example.test`, `rls-test-b@example.test`) dan dua toko uji di proyek dev; tes juga memeriksa isolasi view `stock_balance` | Membuktikan isolasi antar-toko pada tabel dan view. Data uji hanya di proyek dev, bukan data toko sungguhan |
 | 2026-11-18 | Proteksi kata sandi bocor (HaveIBeenPwned) tidak diaktifkan | Fitur ini hanya tersedia di paket Pro; proyek memakai paket gratis. Dicatat sebagai risiko yang diterima sampai ada anggaran |
+| 2026-11-18 | RPC sinkron: `sync_push` SECURITY DEFINER dengan validasi toko eksplisit; `sync_pull` SECURITY INVOKER + filter `store_id`; `applied_ops` RLS tanpa policy | Push perlu menulis banyak tabel dalam satu panggilan, jadi hak pemilik dipakai tetapi toko divalidasi per op. Pull cukup mengandalkan RLS pengguna. `applied_ops` hanya untuk idempotensi internal |
+| 2026-11-18 | `sync_push` tidak menyinkronkan `profiles` dan menolak tabel di luar `sync_allowed_tables()` | Profil dibuat/dikelola server (peran & toko); daftar tertutup mencegah klien menulis tabel internal |
+| 2026-11-18 | Barcode ganda dari klien ditolak sebagai `error`, bukan ditimpa | Sesuai §8: server menolak yang kedua dan klien menampilkan antrean "Perlu diselesaikan" |
+| 2026-11-18 | `EXECUTE` pada `sync_push`/`sync_pull` dicabut dari `anon` (migrasi `0004_sync_grants`) | Default privileges Supabase memberi akses ke anon; RPC sinkron hanya untuk pengguna login |

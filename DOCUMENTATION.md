@@ -135,11 +135,12 @@ Tips:
 - [x] Proyek Flutter `petshop_pos` (Android + web), struktur `lib/core` dan `lib/features`.
 - [x] Skema Drift 25 tabel + uji database in-memory; `flutter analyze` bersih; 20 tes lulus.
 - [x] Migrasi server `supabase/migrations/0001_init.sql`: tipe enum, tabel §7, RLS semua tabel, trigger `server_seq`, trigger append-only, view `stock_balance`.
-- [x] Tes RLS `supabase/tests/rls_test.sql` (dijalankan setelah proyek dev dan 2 pengguna tersedia).
+- [x] Migrasi lanjutan: `0002_security_hardening` (view `stock_balance` mengikuti RLS, `search_path` fungsi, indeks FK), `0003_sync_rpc` (`applied_ops`, `sync_push`, `sync_pull`), `0004_sync_grants` (cabut akses anon ke RPC sinkron), `0005_sync_push_robust` (kesalahan satu op tidak membatalkan batch).
+- [x] Tes RLS `supabase/tests/rls_test.sql` dan tes sinkron `supabase/tests/sync_test.sql` (dijalankan setelah proyek dev dan 2 pengguna tersedia).
 - [x] CI `.github/workflows/ci.yml`: Flutter analyze/test + tes Python `petshop-dev`.
 - [x] Impor Excel: 86 produk di `tools/out/products_import.csv`.
 - [x] Layar impor + daftar produk: memilih CSV, membuat pemasok/kategori/produk/satuan/harga beli, lalu menampilkan 86 produk di beranda (diverifikasi lewat tes).
-- [x] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); migrasi `0001_init` dan `0002_security_hardening` diterapkan, tes RLS lulus (2026-11-18, 23 tabel, RLS aktif semua). Advisor keamanan tanpa ERROR.
+- [x] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); migrasi `0001_init`–`0005_sync_push_robust` diterapkan, tes RLS dan tes sinkron lulus (2026-11-18, 24 tabel, RLS aktif semua). Advisor keamanan tanpa ERROR.
 
 ### 6.2 Memuat data awal di app
 
