@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/db/database_provider.dart';
+import '../../core/theme/app_theme.dart';
 import '../products/products_providers.dart';
 import 'product_importer.dart';
 
@@ -58,80 +59,304 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Impor Produk')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Data awal dari Excel',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Pilih file CSV yang dihasilkan skrip impor. Sebelumnya, '
-                    'koreksi dulu harga yang ditandai di file itu.',
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _pickAndImport,
-                    icon: const Icon(Icons.upload_file),
-                    label: const Text('Pilih file CSV'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_busy) ...[
-            const SizedBox(height: 16),
-            const LinearProgressIndicator(),
-            const SizedBox(height: 8),
-            const Text('Membaca file dan menyimpan produk…'),
-          ],
+          const _ImportHero(),
+          const SizedBox(height: 16),
+          const _StepsCard(),
+          const SizedBox(height: 16),
+          _UploadCard(busy: _busy, onPick: _pickAndImport),
           if (_error != null) ...[
             const SizedBox(height: 16),
-            Card(
-              color: theme.colorScheme.errorContainer,
-              child: ListTile(
-                leading: Icon(
-                  Icons.error_outline,
-                  color: theme.colorScheme.error,
-                ),
-                title: const Text('Impor gagal'),
-                subtitle: Text(_error!),
-              ),
-            ),
+            _ErrorCard(message: _error!),
           ],
           if (_outcome != null) ...[
             const SizedBox(height: 16),
             _OutcomeCard(outcome: _outcome!),
-          ],
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Stok belum diisi'),
-              subtitle: const Text(
-                'File ini hanya berisi harga beli. Stok awal dicatat saat '
-                'opname pertama, bukan dari file.',
-              ),
-            ),
-          ),
-          if (_outcome != null) ...[
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.list_alt),
+              icon: const Icon(Icons.list_alt_rounded, size: 18),
               label: const Text('Lihat daftar produk'),
             ),
           ],
+          const SizedBox(height: 16),
+          const _InfoCard(),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportHero extends StatelessWidget {
+  const _ImportHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppTheme.heroGradient,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.table_view_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Data awal dari Excel',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Harga beli & daftar produk',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Pilih file CSV yang dihasilkan skrip impor. Sebelumnya, koreksi '
+            'dulu harga yang ditandai di file itu.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.86),
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepsCard extends StatelessWidget {
+  const _StepsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cara impor',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const _Step(
+            number: '1',
+            text: 'Periksa harga di file CSV, terutama yang bertanda perlu dicek.',
+          ),
+          const SizedBox(height: 12),
+          const _Step(
+            number: '2',
+            text: 'Tekan tombol pilih file, lalu cari file .csv tersebut.',
+          ),
+          const SizedBox(height: 12),
+          const _Step(
+            number: '3',
+            text: 'Tunggu sampai ringkasan impor muncul di bawah.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Step extends StatelessWidget {
+  const _Step({required this.number, required this.text});
+
+  final String number;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            number,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryDeep,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(height: 1.45),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UploadCard extends StatelessWidget {
+  const _UploadCard({required this.busy, required this.onPick});
+
+  final bool busy;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.09),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.upload_file_rounded,
+              size: 30,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'File CSV siap diimpor',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Format .csv, pemisah koma',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.muted),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: busy ? null : onPick,
+              icon: const Icon(Icons.folder_open_rounded, size: 18),
+              label: const Text('Pilih file CSV'),
+            ),
+          ),
+          if (busy) ...[
+            const SizedBox(height: 18),
+            const ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+              child: LinearProgressIndicator(minHeight: 6),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Membaca file dan menyimpan produk…',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.muted,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.danger,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Impor gagal',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.danger,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(message, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -146,54 +371,214 @@ class _OutcomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Impor selesai', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            _Line('Produk baru', '${outcome.inserted}'),
-            _Line('Dilewati (sudah ada)', '${outcome.skippedExisting}'),
-            _Line('Perlu dicek harganya', '${outcome.needsReview}'),
-            _Line(
-              'Pemasok / kategori baru',
-              '${outcome.newSuppliers} / ${outcome.newCategories}',
-            ),
-            if (outcome.problems.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Catatan', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 4),
-              for (final problem in outcome.problems.take(10))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Text('• $problem'),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-              if (outcome.problems.length > 10)
-                Text('… dan ${outcome.problems.length - 10} catatan lain.'),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: AppColors.success,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Impor selesai',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _Metric(
+                  label: 'Produk baru',
+                  value: '${outcome.inserted}',
+                  tint: AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _Metric(
+                  label: 'Dilewati',
+                  value: '${outcome.skippedExisting}',
+                  tint: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _Metric(
+                  label: 'Perlu dicek',
+                  value: '${outcome.needsReview}',
+                  tint: outcome.needsReview == 0
+                      ? AppColors.success
+                      : AppColors.warning,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _Metric(
+                  label: 'Pemasok / kategori',
+                  value: '${outcome.newSuppliers} / ${outcome.newCategories}',
+                  tint: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          if (outcome.problems.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Catatan',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final problem in outcome.problems.take(10))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('•  '),
+                    Expanded(
+                      child: Text(problem, style: theme.textTheme.bodySmall),
+                    ),
+                  ],
+                ),
+              ),
+            if (outcome.problems.length > 10)
+              Text(
+                '… dan ${outcome.problems.length - 10} catatan lain.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.muted,
+                ),
+              ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _Line extends StatelessWidget {
-  const _Line(this.label, this.value);
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value, required this.tint});
 
   final String label;
   final String value;
+  final Color tint;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: tint,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7EA),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.info_outline_rounded,
+              color: AppColors.warning,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Stok belum diisi',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'File ini hanya berisi harga beli. Stok awal dicatat saat '
+                  'opname pertama, bukan dari file.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.muted,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
