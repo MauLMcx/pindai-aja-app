@@ -141,6 +141,10 @@ Tips:
 - [x] Impor Excel: 86 produk di `tools/out/products_import.csv`.
 - [x] Layar impor + daftar produk: memilih CSV, membuat pemasok/kategori/produk/satuan/harga beli, lalu menampilkan 86 produk di beranda (diverifikasi lewat tes).
 - [x] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); migrasi `0001_init`–`0005_sync_push_robust` diterapkan, tes RLS dan tes sinkron lulus (2026-11-18, 24 tabel, RLS aktif semua). Advisor keamanan tanpa ERROR.
+- [x] Layanan database klien: ledger stok/utang (append-only), penjualan tunai/kredit/campuran/diskon/hold/void, barang masuk + riwayat harga, stok opname, retur jual/beli, dan laporan omzet/HPP/laba. Setiap tulisan menyertakan baris `outbox` dalam transaksi Drift yang sama.
+- [x] Mesin sinkron klien `SyncService` + `SupabaseSyncApi`: push idempoten per `op_id`, pull per tabel mengikuti `server_seq`, status `applied|skipped|error`, dan kegagalan jaringan tidak menghapus antrean.
+- [x] Tes host: 59 tes lulus (`flutter analyze` bersih), termasuk 11 tes sinkron dengan transport palsu tanpa jaringan.
+- [x] Tes perangkat Android (PKG110, Android 16): database SQLite file nyata di folder aplikasi, data bertahan setelah tutup–buka, alur beli → jual → stok → outbox → push/pull, dan mode jaringan mati. Jalankan `flutter test integration_test -d <serial>`. 4 tes lulus (2026-11-18).
 
 ### 6.2 Memuat data awal di app
 
@@ -165,12 +169,14 @@ Catatan Windows: tes Drift memakai `NativeDatabase`, sehingga butuh `sqlite3.dll
 | Level | Isi | Alat |
 |---|---|---|
 | Unit | Money, konversi satuan, HPP rata-rata, diskon, EAN-13, ledger stok | `flutter test` |
-| Integrasi | Drift + outbox + sinkron ke Supabase dev | `integration_test`, `petshop-dev.simulate_sync` |
+| Integrasi | Drift + outbox + sinkron ke Supabase dev; tes perangkat memakai file SQLite nyata + transport palsu | `integration_test` di Android, `petshop-dev.simulate_sync` |
 | RLS/keamanan | Isolasi antar toko, anon tidak bisa baca | Tes SQL/pgTAP atau skrip + Supabase advisor |
 | Web | Alur admin dan laporan | Playwright MCP |
 | Perangkat | Kamera scan, printer Bluetooth, mati lampu | **Manual** dengan checklist di `docs/manual-test.md` |
 
 Checklist manual minimum sebelum dipakai di toko: scan 20 produk berbeda (cahaya redup juga), cetak 5 struk (pendek dan panjang), matikan internet saat transaksi, matikan printer di tengah cetak, tutup paksa app saat bayar, pasang di 2 HP dan cek stok sinkron.
+
+Tes perangkat otomatis: sambungkan HP, lalu `flutter devices` dan `flutter test integration_test -d <serial>`. Tes memakai file `petshop_device_test.sqlite` di folder dokumen aplikasi dan menghapusnya setelah selesai; database utama aplikasi tidak disentuh.
 
 ## 8. Keamanan dan Operasional
 
