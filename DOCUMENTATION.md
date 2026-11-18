@@ -159,6 +159,24 @@ Catatan pemetaan impor:
 
 Catatan Windows: tes Drift memakai `NativeDatabase`, sehingga butuh `sqlite3.dll` yang bisa ditemukan proses tes. Aplikasi Android sendiri memakai `sqlite3_flutter_libs`, jadi tidak terpengaruh.
 
+## 6.3 Status pelaksanaan Tahap 2 (2026-11-18)
+
+- [x] Barang masuk: `purchases` + `purchase_items` + mutasi `purchase_in` + `price_history` `buy`, dengan peringatan bila harga beli berubah.
+- [x] Daftar stok dan "Perlu dibeli": saldo dari ledger, pengelompokan per pemasok utama, ubah stok minimum, pencarian nama/merek/barcode, plus banner peringatan di beranda saat stok menipis.
+- [x] Penataan barang: `products.shelf_location` + riwayat `putaway_log`.
+- [x] Opname: sesi baru, hitung fisik, selisih saat selesai menjadi `opname_adjust`; sesi selesai terkunci.
+- [x] Retur penjualan (dengan atau tanpa struk) dan retur pembelian; refund kredit menulis `debt_ledger` `return_offset`.
+- [x] Riwayat harga per produk (beli/jual).
+- [x] `dart analyze` bersih; seluruh 54 tes lulus, termasuk akurasi stok vs hitungan manual dan HPP rata-rata.
+- [ ] Sinkron nyata ke Supabase DEV dan tes RLS (menunggu kredensial pemilik); outbox sudah terisi untuk semua tulisan Tahap 2.
+- [ ] Uji printer/kamera di perangkat nyata (tetap manual, belum diklaim lulus).
+
+Catatan teknis:
+- HPP tidak disimpan di kolom; `replayMovingAverage` menghitung ulang dari `stock_movements` dengan urutan `occurred_at`, `rowid`.
+- Hanya `purchase_in` yang mengubah rata-rata; stok minus dianggap 0 saat menghitung.
+- Retur penjualan tanpa struk memakai HPP rata-rata berjalan karena tidak ada `sale_items` sumber.
+- Retur pembelian hanya mengurangi stok; utang pemasok di luar cakupan versi 1.
+
 ## 7. Pengujian
 
 | Level | Isi | Alat |

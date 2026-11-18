@@ -5,21 +5,24 @@
       "petshop-dev": {
         "type": "local",
         "command": [
-          "C:\\Users\\mcx\\Documents\\app\\tools\\petshop_dev_mcp\\.venv\\Scripts\\python.exe",
-          "C:\\Users\\mcx\\Documents\\app\\tools\\petshop_dev_mcp\\server.py"
+          "tools/petshop_dev_mcp/.venv/Scripts/python.exe",
+          "tools/petshop_dev_mcp/server.py"
         ],
-        "cwd": "C:\\Users\\mcx\\Documents\\app",
+        "cwd": ".",
         "environment": {
-          "PETSHOP_ROOT": "C:\\Users\\mcx\\Documents\\app"
+          "PETSHOP_ROOT": "."
         }
       },
       "dart": {
         "type": "local",
         "command": [
-          "C:\\flutter\\bin\\cache\\dart-sdk\\bin\\dart.exe",
+          "C:\\Users\\MyBook Hype\\flutter\\bin\\cache\\dart-sdk\\bin\\dart.exe",
           "mcp-server"
         ],
-        "cwd": "C:\\Users\\mcx\\Documents\\app"
+        "cwd": ".",
+        "timeout": {
+          "startup": 120000
+        }
       },
       "context7": {
         "type": "remote",
@@ -38,7 +41,7 @@
           "-y",
           "@supabase/mcp-server-supabase@latest",
           "--read-only",
-          "--project-ref=PROJECT_REF_DEV"
+          "--project-ref={env:SUPABASE_PROJECT_REF_DEV}"
         ],
         "environment": {
           "SUPABASE_ACCESS_TOKEN": "{env:SUPABASE_ACCESS_TOKEN}"

@@ -106,3 +106,70 @@ Buka CSV di Excel/Google Sheets, lengkapi, lalu serahkan ke agent sebagai data a
 - `simulate_sync` dan `seed_demo` di `DOCUMENTATION.md` bagian 4 **belum dibuat**, karena mesin sinkronnya belum ada. Dibuat agent saat Tahap 3.
 - `server.py` memakai API **mcp 2.x** (`MCPServer`, sebelumnya `FastMCP`) dan sudah diuji tersambung ke klien MCP; tool `gen_ean13_internal` berhasil. `requirements.txt` dipin ke `mcp>=2,<3`.
 - MCP `supabase` sengaja dinonaktifkan sampai Project Ref proyek DEV dan `SUPABASE_ACCESS_TOKEN` diisi.
+
+## 10. Status konfigurasi OpenCode (2026-11-18)
+
+OpenCode memakai `opencode.json` di root proyek. Berkas `mcp.json` tetap dipakai untuk agent lain (misalnya Claude Code) dan tidak dibaca otomatis oleh OpenCode. Perubahan `opencode.json` langsung dimuat ulang, tidak perlu restart.
+
+| Server | Status | Catatan |
+|---|---|---|
+| `context7` | connected | Remote `https://mcp.context7.com/mcp`. |
+| `playwright` | connected | Lokal via `cmd /c npx -y @playwright/mcp@latest`. |
+| `petshop-dev` | connected | Venv dibuat di `tools/petshop_dev_mcp/.venv`; `mcp 2.3.0` + `openpyxl 3.1.5`. Tes: `Ran 18 tests ... OK (skipped=8)`. Delapan tes impor diskip karena `data/Data_Harga_Pakan.xlsx` belum ada di repo (folder `data/` memang di-ignore). |
+| `dart` | connected | Flutter 3.50.0 + Dart 3.14.0 terpasang di `C:\Users\MyBook Hype\flutter`. `dart.exe` dipanggil langsung dari `bin\cache\dart-sdk\bin\dart.exe`, dengan `timeout.startup = 120000` (handshake awal lebih lama dari default 30 detik). `flutter\bin` juga ditambahkan ke PATH user. |
+| `supabase` | disabled | Perlu env var `SUPABASE_PROJECT_REF_DEV` dan `SUPABASE_ACCESS_TOKEN`. Token tidak boleh ditulis ke repo. |
+
+Smoke test `petshop-dev`: `gen_ean13_internal("07", 1)` menghasilkan `2070000000018`; `receipt_preview` lebar 32 menghasilkan semua baris ≤ 32 karakter.
+
+Smoke test `dart`: tool `analyze_files` berhasil dijalankan terhadap root proyek. Diagnostic yang muncul (`uri_does_not_exist` untuk `package:drift/...`, `package:flutter_lints/...`, dst.) berasal dari dependensi yang belum diunduh — jalankan `flutter pub get` sebelum mengharapkan `dart analyze` bersih. Ini bukan masalah koneksi MCP.
+
+## 11. Android SDK (2026-11-18)
+
+Dipakai **command-line tools saja**, tanpa Android Studio. Lokasi: `C:\Android\Sdk` (path tanpa spasi supaya aman untuk Gradle/NDK).
+
+| Komponen | Versi | Catatan |
+|---|---|---|
+| `cmdline-tools` | 23.0.0 (`latest`) | Berisi `sdkmanager`. Sejak versi ini `sdkmanager` hanya pembungkus **Android CLI** dan mencetak peringatan deprecated. |
+| `platform-tools` | 37.0.1 | Menyediakan `adb`. |
+| `platforms` | android-36, android-35 | Flutter 3.50 memakai compileSdk 36; android-35 ikut terpasang otomatis oleh plugin Gradle. |
+| `build-tools` | 36.0.0, 36.1.0 | |
+| `ndk` | 28.2.13676358 | Sesuai `flutter.ndkVersion`. **Wajib dipasang manual** — lihat catatan di bawah. |
+| `cmake` | 3.22.1 | Terpasang otomatis saat build pertama. |
+
+Variabel lingkungan (level User):
+
+```
+ANDROID_HOME=C:\Android\Sdk
+ANDROID_SDK_ROOT=C:\Android\Sdk
+Path += C:\Android\Sdk\platform-tools;C:\Android\Sdk\cmdline-tools\latest\bin;C:\Users\MyBook Hype\flutter\bin
+```
+
+Selain itu: `flutter config --android-sdk C:\Android\Sdk` dan `flutter config --jdk-dir "C:\Program Files\Java\jdk-21"`.
+`android/local.properties` (di-ignore git) sudah memuat `sdk.dir=C:\\Android\\Sdk`.
+
+**Cara cek:**
+
+```powershell
+flutter doctor          # Android toolchain harus [√]
+adb version
+flutter build apk --debug
+```
+
+Hasil 2026-11-18: `flutter doctor` menunjukkan `[√] Android toolchain ... build-tools 36.1.0`, dan `flutter build apk --debug` berhasil menghasilkan `build\app\outputs\flutter-apk\app-debug.apk` (170 MB, debug).
+
+**Catatan penting — sintaks paket berubah.** `sdkmanager` versi baru memakai garis miring, bukan titik koma:
+
+```powershell
+sdkmanager "platforms/android-36" "build-tools/36.1.0" "ndk/28.2.13676358"   # benar
+sdkmanager "platforms;android-36"                                            # gagal: "Package platforms not found"
+```
+
+Karena itu build pertama gagal dengan `Android sdkmanager did not install NDK 28.2.13676358` — plugin Gradle masih memanggil sintaks lama. Solusinya memasang NDK manual dengan sintaks baru di atas. `--licenses` juga tidak diperlukan lagi (Android CLI menerima lisensi otomatis), tetapi Flutter tetap melaporkan "All Android licenses accepted".
+
+Belum dipasang: `emulator` + system image, dan belum ada perangkat Android fisik tersambung. Untuk uji kamera dan printer Bluetooth nanti tetap perlu HP sungguhan (`flutter devices` harus menampilkan perangkat Android).
+
+Cara mengaktifkan Supabase nanti:
+
+1. Set env var `SUPABASE_PROJECT_REF_DEV` (project ref proyek **DEV**) dan `SUPABASE_ACCESS_TOKEN` (Personal Access Token Supabase) di lingkungan yang menjalankan OpenCode. Jangan taruh token di `opencode.json` maupun git.
+2. Hapus `"disabled": true` dari entri `supabase` di `opencode.json` (argumen sudah memakai `{env:SUPABASE_PROJECT_REF_DEV}` dan environment sudah memakai `{env:SUPABASE_ACCESS_TOKEN}`).
+3. Jalankan `opencode mcp list`; status harus `connected` dan flag `--read-only` tetap ada.

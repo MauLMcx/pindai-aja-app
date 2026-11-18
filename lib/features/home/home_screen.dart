@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../import/import_screen.dart';
 import '../products/products_providers.dart';
+import '../stock/stock_home_screen.dart';
+import '../stock/stock_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -11,6 +13,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final products = ref.watch(productListProvider);
+    final lowStock = ref.watch(lowStockGroupsProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kasir Petshop'),
@@ -24,18 +27,75 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: products.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Gagal membaca database: $error',
-              textAlign: TextAlign.center,
+      body: Column(
+        children: [
+          _LowStockBanner(
+            count: lowStock.maybeWhen(
+              data: (groups) =>
+                  groups.fold<int>(0, (sum, group) => sum + group.rows.length),
+              orElse: () => 0,
             ),
           ),
+          Expanded(
+            child: products.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Gagal membaca database: $error',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              data: (items) => _ProductList(items: items),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pengingat stok menipis saat app dibuka (SPEC §6.7), tanpa server push.
+class _LowStockBanner extends StatelessWidget {
+  const _LowStockBanner({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return const SizedBox.shrink();
+    return Material(
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const StockHomeScreen()),
         ),
-        data: (items) => _ProductList(items: items),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$count barang di bawah stok minimum. Perlu dibeli.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -52,7 +112,7 @@ class _ProductList extends StatelessWidget {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: items.isEmpty ? 3 : items.length + 2,
+      itemCount: items.isEmpty ? 4 : items.length + 3,
       itemBuilder: (context, index) {
         if (index == 0) {
           return const _CardGap(
@@ -69,6 +129,23 @@ class _ProductList extends StatelessWidget {
           return _CardGap(
             child: ListTile(
               leading: const Icon(Icons.inventory_2_outlined),
+              title: const Text('Stok & Inventaris'),
+              subtitle: const Text(
+                'Barang masuk, penataan, opname, retur, dan daftar stok.',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const StockHomeScreen(),
+                ),
+              ),
+            ),
+          );
+        }
+        if (index == 2) {
+          return _CardGap(
+            child: ListTile(
+              leading: const Icon(Icons.pets),
               title: const Text('Produk'),
               subtitle: Text('${items.length} produk'),
               trailing: needsReview == 0
@@ -91,7 +168,7 @@ class _ProductList extends StatelessWidget {
             ),
           );
         }
-        return _CardGap(child: _ProductTile(item: items[index - 2]));
+        return _CardGap(child: _ProductTile(item: items[index - 3]));
       },
     );
   }
