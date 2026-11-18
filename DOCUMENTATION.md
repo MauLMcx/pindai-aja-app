@@ -139,7 +139,7 @@ Tips:
 - [x] CI `.github/workflows/ci.yml`: Flutter analyze/test + tes Python `petshop-dev`.
 - [x] Impor Excel: 86 produk di `tools/out/products_import.csv`.
 - [x] Layar impor + daftar produk: memilih CSV, membuat pemasok/kategori/produk/satuan/harga beli, lalu menampilkan 86 produk di beranda (diverifikasi lewat tes).
-- [~] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); butuh `SUPABASE_ACCESS_TOKEN` di variabel lingkungan + restart MCP, lalu jalankan `supabase/tests/rls_test.sql`.
+- [x] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); migrasi `0001_init` dan `0002_security_hardening` diterapkan, tes RLS lulus (2026-11-18, 23 tabel, RLS aktif semua). Advisor keamanan tanpa ERROR.
 
 ### 6.2 Memuat data awal di app
 

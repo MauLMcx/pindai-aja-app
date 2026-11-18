@@ -76,6 +76,29 @@ begin
 end;
 $$;
 
+-- 2b) View stock_balance juga wajib mengikuti RLS (security_invoker, migrasi 0002).
+do $$
+declare
+  n integer;
+  store_a uuid := current_setting('test.store_a')::uuid;
+  store_b uuid := current_setting('test.store_b')::uuid;
+begin
+  select count(*) into n from stock_balance where store_id = store_b;
+  if n <> 0 then
+    raise exception 'isolasi gagal: user A melihat % baris stok toko B lewat stock_balance', n;
+  end if;
+
+  -- Bila toko A punya mutasi stok, view harus menampilkannya.
+  select count(*) into n from stock_movements where store_id = store_a;
+  if n > 0 then
+    select count(*) into n from stock_balance where store_id = store_a;
+    if n = 0 then
+      raise exception 'user A tidak melihat stok tokonya sendiri lewat stock_balance';
+    end if;
+  end if;
+end;
+$$;
+
 reset role;
 
 -- 3) Anon tanpa login tidak boleh melihat data apa pun.
@@ -89,6 +112,11 @@ begin
   select count(*) into n from products;
   if n <> 0 then
     raise exception 'anon dapat membaca % baris products', n;
+  end if;
+
+  select count(*) into n from stock_balance;
+  if n <> 0 then
+    raise exception 'anon dapat membaca % baris stock_balance', n;
   end if;
 end;
 $$;
