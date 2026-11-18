@@ -5,6 +5,7 @@ import '../../core/money.dart';
 import '../../core/theme/app_theme.dart';
 import '../import/import_screen.dart';
 import '../products/products_providers.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -47,6 +48,11 @@ class _HomeViewState extends State<_HomeView> {
         .push(MaterialPageRoute<void>(builder: (_) => const ImportScreen()));
   }
 
+  void _openSettings() {
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+  }
+
   List<ProductListItem> get _visibleItems {
     final query = _query.trim().toLowerCase();
     return widget.items.where((item) {
@@ -66,6 +72,8 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     final needsReview = widget.items
         .where((item) => item.needsPriceReview)
         .length;
@@ -77,7 +85,10 @@ class _HomeViewState extends State<_HomeView> {
       itemBuilder: (context, index) {
         switch (index) {
           case 0:
-            return _HomeHeader(onImport: _openImport);
+            return _HomeHeader(
+              onImport: _openImport,
+              onSettings: _openSettings,
+            );
           case 1:
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
@@ -140,14 +151,16 @@ class _HomeViewState extends State<_HomeView> {
                 children: [
                   Text(
                     'Daftar Produk',
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     '${visible.length} tampil',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.muted),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.muted,
+                    ),
                   ),
                 ],
               ),
@@ -180,16 +193,18 @@ class _HomeViewState extends State<_HomeView> {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onImport});
+  const _HomeHeader({required this.onImport, required this.onSettings});
 
   final VoidCallback onImport;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       child: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.heroGradient),
+        decoration: BoxDecoration(gradient: palette.heroGradient),
         child: Stack(
           children: [
             Positioned(right: -50, top: -60, child: _Bubble(size: 170)),
@@ -242,18 +257,17 @@ class _HomeHeader extends StatelessWidget {
                           ),
                         ),
                         IconButton(
+                          tooltip: 'Pengaturan',
+                          onPressed: onSettings,
+                          icon: const Icon(Icons.settings_rounded, size: 22),
+                          style: _headerActionStyle(),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
                           tooltip: 'Impor produk',
                           onPressed: onImport,
                           icon: const Icon(Icons.upload_file_rounded, size: 22),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.16,
-                            ),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
+                          style: _headerActionStyle(),
                         ),
                       ],
                     ),
@@ -325,6 +339,16 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
+ButtonStyle _headerActionStyle() {
+  return IconButton.styleFrom(
+    backgroundColor: Colors.white.withValues(alpha: 0.16),
+    foregroundColor: Colors.white,
+    minimumSize: const Size(40, 40),
+    padding: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+  );
+}
+
 class _Bubble extends StatelessWidget {
   const _Bubble({required this.size});
 
@@ -351,6 +375,7 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Row(
       children: [
         Expanded(
@@ -358,7 +383,7 @@ class _SummaryRow extends StatelessWidget {
             icon: Icons.inventory_2_outlined,
             value: '$total produk',
             label: 'Total produk',
-            tint: AppColors.primary,
+            tint: palette.primary,
           ),
         ),
         const SizedBox(width: 12),
@@ -371,7 +396,7 @@ class _SummaryRow extends StatelessWidget {
                 ? 'Harga lengkap'
                 : '$needsReview perlu dicek',
             label: 'Status harga',
-            tint: needsReview == 0 ? AppColors.success : AppColors.warning,
+            tint: needsReview == 0 ? palette.success : palette.warning,
           ),
         ),
       ],
@@ -394,12 +419,13 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Row(
         children: [
@@ -423,10 +449,11 @@ class _StatCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.2,
+                      color: palette.ink,
                     ),
                   ),
                 ),
@@ -435,10 +462,7 @@ class _StatCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.muted,
-                  ),
+                  style: TextStyle(fontSize: 11.5, color: palette.muted),
                 ),
               ],
             ),
@@ -462,11 +486,12 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Material(
-      color: selected ? AppColors.primary : Colors.white,
+      color: selected ? palette.primary : palette.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: selected ? AppColors.primary : AppColors.line),
+        side: BorderSide(color: selected ? palette.primary : palette.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -478,7 +503,7 @@ class _FilterChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : AppColors.ink,
+              color: selected ? palette.onPrimary : palette.ink,
             ),
           ),
         ),
@@ -495,8 +520,9 @@ class _ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     final review = item.needsPriceReview;
-    final tint = review ? AppColors.warning : AppColors.primary;
+    final tint = review ? palette.warning : palette.primary;
     final title = item.variant == null
         ? item.name
         : '${item.name} (${item.variant})';
@@ -509,9 +535,9 @@ class _ProductCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,7 +574,7 @@ class _ProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 11.5,
-                      color: AppColors.muted,
+                      color: palette.muted,
                     ),
                   ),
                 ],
@@ -561,14 +587,14 @@ class _ProductCard extends StatelessWidget {
                       icon: Icons.inventory_2_outlined,
                       text: 'Stok ${item.stockBase} ${item.baseUnit}',
                       tint: item.stockBase <= 0
-                          ? AppColors.warning
-                          : AppColors.muted,
+                          ? palette.warning
+                          : palette.muted,
                     ),
                     if (review)
-                      const _Pill(
+                      _Pill(
                         icon: Icons.rate_review_outlined,
                         text: 'Perlu cek harga',
-                        tint: AppColors.warning,
+                        tint: palette.warning,
                       ),
                   ],
                 ),
@@ -576,7 +602,10 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _PriceTag(item: item),
+          _PriceTag(
+            item: item,
+            tint: review ? palette.warning : palette.primaryDeep,
+          ),
         ],
       ),
     );
@@ -618,19 +647,21 @@ class _Pill extends StatelessWidget {
 }
 
 class _PriceTag extends StatelessWidget {
-  const _PriceTag({required this.item});
+  const _PriceTag({required this.item, required this.tint});
 
   final ProductListItem item;
+  final Color tint;
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     if (item.buyPrice == null) {
-      return const Text(
+      return Text(
         'Harga belum ada',
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: AppColors.muted,
+          color: palette.muted,
         ),
       );
     }
@@ -638,15 +669,15 @@ class _PriceTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color: tint.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         formatRupiah(item.buyPrice!),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: AppColors.primaryDeep,
+          color: tint,
         ),
       ),
     );
@@ -667,13 +698,14 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Column(
         children: [
@@ -681,13 +713,13 @@ class _EmptyState extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.09),
+              color: palette.primary.withValues(alpha: 0.09),
               shape: BoxShape.circle,
             ),
             child: Icon(
               hasProducts ? Icons.search_off_rounded : Icons.pets,
               size: 32,
-              color: AppColors.primary,
+              color: palette.primary,
             ),
           ),
           const SizedBox(height: 16),
@@ -706,7 +738,7 @@ class _EmptyState extends StatelessWidget {
                       'tersedia di kanan atas.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.muted,
+              color: palette.muted,
               height: 1.5,
             ),
           ),
@@ -747,7 +779,7 @@ class _HomeLoading extends StatelessWidget {
           Text(
             'Menyiapkan data toko…',
             style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.muted),
+                ?.copyWith(color: AppPalette.of(context).muted),
           ),
         ],
       ),
@@ -763,15 +795,16 @@ class _HomeError extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: palette.card,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.line),
+            border: Border.all(color: palette.line),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -780,12 +813,12 @@ class _HomeError extends ConsumerWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.1),
+                  color: palette.danger.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.error_outline_rounded,
-                  color: AppColors.danger,
+                  color: palette.danger,
                   size: 28,
                 ),
               ),
@@ -802,7 +835,7 @@ class _HomeError extends ConsumerWidget {
                 '$error',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.muted,
+                  color: palette.muted,
                 ),
               ),
               const SizedBox(height: 18),

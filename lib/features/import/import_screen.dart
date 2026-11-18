@@ -96,10 +96,11 @@ class _ImportHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
+        gradient: palette.heroGradient,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -166,12 +167,13 @@ class _StepsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,6 +213,7 @@ class _Step extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -219,15 +222,15 @@ class _Step extends StatelessWidget {
           height: 24,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: palette.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             number,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: AppColors.primaryDeep,
+              color: palette.primaryDeep,
             ),
           ),
         ),
@@ -253,12 +256,13 @@ class _UploadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Column(
         children: [
@@ -266,13 +270,13 @@ class _UploadCard extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.09),
+              color: palette.primary.withValues(alpha: 0.09),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.upload_file_rounded,
               size: 30,
-              color: AppColors.primary,
+              color: palette.primary,
             ),
           ),
           const SizedBox(height: 14),
@@ -287,7 +291,7 @@ class _UploadCard extends StatelessWidget {
           Text(
             'Format .csv, pemisah koma',
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.muted),
+            style: theme.textTheme.bodySmall?.copyWith(color: palette.muted),
           ),
           const SizedBox(height: 18),
           SizedBox(
@@ -307,9 +311,7 @@ class _UploadCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Membaca file dan menyimpan produk…',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.muted,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: palette.muted),
             ),
           ],
         ],
@@ -325,31 +327,28 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.danger.withValues(alpha: 0.06),
+        color: palette.danger.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+        border: Border.all(color: palette.danger.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.danger,
-            size: 22,
-          ),
+          Icon(Icons.error_outline_rounded, color: palette.danger, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Impor gagal',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: AppColors.danger,
+                    color: palette.danger,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -371,12 +370,13 @@ class _OutcomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+        border: Border.all(color: palette.success.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,12 +387,12 @@ class _OutcomeCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.12),
+                  color: palette.success.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_rounded,
-                  color: AppColors.success,
+                  color: palette.success,
                   size: 20,
                 ),
               ),
@@ -412,7 +412,7 @@ class _OutcomeCard extends StatelessWidget {
                 child: _Metric(
                   label: 'Produk baru',
                   value: '${outcome.inserted}',
-                  tint: AppColors.success,
+                  tint: palette.success,
                 ),
               ),
               const SizedBox(width: 10),
@@ -420,7 +420,7 @@ class _OutcomeCard extends StatelessWidget {
                 child: _Metric(
                   label: 'Dilewati',
                   value: '${outcome.skippedExisting}',
-                  tint: AppColors.muted,
+                  tint: palette.muted,
                 ),
               ),
             ],
@@ -433,8 +433,8 @@ class _OutcomeCard extends StatelessWidget {
                   label: 'Perlu dicek',
                   value: '${outcome.needsReview}',
                   tint: outcome.needsReview == 0
-                      ? AppColors.success
-                      : AppColors.warning,
+                      ? palette.success
+                      : palette.warning,
                 ),
               ),
               const SizedBox(width: 10),
@@ -442,7 +442,7 @@ class _OutcomeCard extends StatelessWidget {
                 child: _Metric(
                   label: 'Pemasok / kategori',
                   value: '${outcome.newSuppliers} / ${outcome.newCategories}',
-                  tint: AppColors.primary,
+                  tint: palette.primary,
                 ),
               ),
             ],
@@ -473,7 +473,7 @@ class _OutcomeCard extends StatelessWidget {
               Text(
                 '… dan ${outcome.problems.length - 10} catatan lain.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.muted,
+                  color: palette.muted,
                 ),
               ),
           ],
@@ -492,6 +492,7 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -519,7 +520,7 @@ class _Metric extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            style: TextStyle(fontSize: 11, color: palette.muted),
           ),
         ],
       ),
@@ -533,12 +534,13 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7EA),
+        color: palette.infoBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+        border: Border.all(color: palette.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,12 +549,12 @@ class _InfoCard extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.16),
+              color: palette.warning.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.info_outline_rounded,
-              color: AppColors.warning,
+              color: palette.warning,
               size: 19,
             ),
           ),
@@ -572,7 +574,7 @@ class _InfoCard extends StatelessWidget {
                   'File ini hanya berisi harga beli. Stok awal dicatat saat '
                   'opname pertama, bukan dari file.',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.muted,
+                    color: palette.muted,
                     height: 1.45,
                   ),
                 ),
