@@ -223,6 +223,44 @@ Future<void> _openStockHome(WidgetTester tester) async {
   await _pumpUntil(tester, find.text('Nilai persediaan'));
 }
 
+/// Menekan tombol kembali setelah animasi rute selesai. `pageBack` menolak
+/// bila masih ada dua tombol "Back" (rute lama + rute baru saat transisi).
+Future<void> _goBack(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pageBack();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+/// Menutup lembar bawah lewat Navigator agar tidak bergantung pada posisi
+/// tombol "Back" halaman di belakangnya.
+Future<void> _dismissSheet(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 400));
+  final sheet = find.byType(BottomSheet);
+  if (sheet.evaluate().isEmpty) {
+    await _goBack(tester);
+    return;
+  }
+  Navigator.of(tester.element(sheet.first)).pop();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
+/// Menunggu sampai widget benar-benar hilang, mis. rute pemilih produk
+/// selesai ditutup sehingga tidak ada dua `TextField` sekaligus.
+Future<void> _pumpUntilGone(
+  WidgetTester tester,
+  Finder finder, {
+  String? label,
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (finder.evaluate().isEmpty) return;
+  }
+  fail('${label ?? 'Widget'} masih tampil setelah menunggu');
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -306,11 +344,11 @@ void main() {
     );
     await _pumpUntil(tester, find.textContaining('Rp 150.000 / dus'));
     expect(find.textContaining('Harga beli'), findsWidgets);
-    await tester.pageBack();
+    await _goBack(tester);
     await _pumpUntil(tester, find.text('Simpan'));
 
     // tutup lembar produk
-    await tester.pageBack();
+    await _dismissSheet(tester);
     await _pumpUntil(tester, find.text('Perlu dibeli'));
 
     // ---------- Perlu dibeli ----------
@@ -318,9 +356,9 @@ void main() {
     await _pumpUntil(tester, find.textContaining('kurang 6000 gram'));
     expect(find.text('Bintang Petshop'), findsOneWidget);
 
-    await tester.pageBack();
+    await _goBack(tester);
     await _pumpUntil(tester, find.text('Nilai persediaan'));
-    await tester.pageBack();
+    await _goBack(tester);
     await _pumpUntil(
       tester,
       find.textContaining('1 barang di bawah stok minimum'),
@@ -334,6 +372,11 @@ void main() {
     await _pumpUntil(tester, find.text('Whiskas Tuna'));
     await _tapVisible(tester, find.text('Whiskas Tuna'), label: 'produk');
     await _pumpUntil(tester, find.text('Simpan lokasi'));
+    await _pumpUntilGone(
+      tester,
+      find.widgetWithText(TextField, 'Cari nama atau barcode'),
+      label: 'Pencarian produk',
+    );
     await tester.enterText(find.byType(TextField), 'Rak B-2');
     await _tapVisible(
       tester,
@@ -346,7 +389,7 @@ void main() {
     expect(putaway.last.toLocation, 'Rak B-2');
 
     // ---------- Opname ----------
-    await tester.pageBack();
+    await _goBack(tester);
     await _pumpUntil(tester, find.text('Nilai persediaan'));
     await _tapVisible(tester, find.text('Stok Opname'), label: 'Stok Opname');
     await _pumpUntil(tester, find.text('Mulai opname'));
@@ -384,7 +427,7 @@ void main() {
     expect(opname.status.name, 'finished');
 
     // ---------- Retur pembelian ----------
-    await tester.pageBack();
+    await _goBack(tester);
     await _pumpUntil(tester, find.text('Nilai persediaan'));
     await _tapVisible(tester, find.text('Retur'), label: 'Retur');
     await _pumpUntil(tester, find.text('Retur Pembelian'));

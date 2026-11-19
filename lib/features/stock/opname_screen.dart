@@ -14,11 +14,11 @@ class OpnameScreen extends ConsumerWidget {
   Future<void> _start(
     BuildContext context,
     WidgetRef ref,
-    TextEditingController scope,
+    String scope,
   ) async {
     final db = ref.read(appDatabaseProvider);
     final store = await ensureLocalStore(db);
-    final note = scope.text.trim();
+    final note = scope.trim();
     final opnameId = await startOpname(
       db,
       storeId: store.id,
@@ -35,49 +35,11 @@ class OpnameScreen extends ConsumerWidget {
   }
 
   Future<void> _askStart(BuildContext context, WidgetRef ref) async {
-    final scope = TextEditingController(text: 'Seluruh toko');
-    final confirmed = await showDialog<bool>(
+    final scope = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Mulai stok opname'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Hitung barang fisik, lalu masukkan jumlahnya. Selisih akan '
-              'dicatat sebagai penyesuaian stok saat opname diselesaikan.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: scope,
-              decoration: const InputDecoration(
-                labelText: 'Cakupan (opsional)',
-                hintText: 'Contoh: Seluruh toko atau Rak A',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Mulai'),
-          ),
-        ],
-      ),
+      builder: (_) => const _StartOpnameDialog(),
     );
-    if (confirmed != true) {
-      scope.dispose();
-      return;
-    }
-    if (!context.mounted) {
-      scope.dispose();
-      return;
-    }
+    if (scope == null || !context.mounted) return;
     try {
       await _start(context, ref, scope);
     } catch (error) {
@@ -85,8 +47,6 @@ class OpnameScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Gagal memulai opname: $error')));
-    } finally {
-      scope.dispose();
     }
   }
 
