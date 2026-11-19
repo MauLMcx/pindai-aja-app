@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../core/theme/app_theme.dart';
+import '../cashier/cashier_screen.dart';
 import '../import/import_screen.dart';
 import '../products/products_providers.dart';
 import '../settings/settings_screen.dart';
@@ -53,6 +54,11 @@ class _HomeViewState extends State<_HomeView> {
         .push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
   }
 
+  void _openCashier() {
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const CashierScreen()));
+  }
+
   List<ProductListItem> get _visibleItems {
     final query = _query.trim().toLowerCase();
     return widget.items.where((item) {
@@ -88,6 +94,7 @@ class _HomeViewState extends State<_HomeView> {
             return _HomeHeader(
               onImport: _openImport,
               onSettings: _openSettings,
+              onCashier: _openCashier,
             );
           case 1:
             return Padding(
@@ -193,10 +200,15 @@ class _HomeViewState extends State<_HomeView> {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onImport, required this.onSettings});
+  const _HomeHeader({
+    required this.onImport,
+    required this.onSettings,
+    required this.onCashier,
+  });
 
   final VoidCallback onImport;
   final VoidCallback onSettings;
+  final VoidCallback onCashier;
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +268,13 @@ class _HomeHeader extends StatelessWidget {
                             ],
                           ),
                         ),
+                        IconButton(
+                          tooltip: 'Kasir',
+                          onPressed: onCashier,
+                          icon: const Icon(Icons.point_of_sale_rounded, size: 22),
+                          style: _headerActionStyle(),
+                        ),
+                        const SizedBox(width: 8),
                         IconButton(
                           tooltip: 'Pengaturan',
                           onPressed: onSettings,
