@@ -118,4 +118,113 @@ begin
 end;
 $$;
 
+-- 5) Anon tidak boleh memanggil fungsi sinkron.
+set local role anon;
+select set_config('request.jwt.claims', '', true);
+
+do $$
+begin
+  begin
+    perform sync_push('[]'::jsonb);
+    raise exception 'anon seharusnya tidak bisa memanggil sync_push';
+  exception
+    when insufficient_privilege then null;
+    when others then
+      if sqlerrm like '%seharusnya%' then
+        raise;
+      end if;
+  end;
+
+  begin
+    perform sync_pull('products', 0, 10);
+    raise exception 'anon seharusnya tidak bisa memanggil sync_pull';
+  exception
+    when insufficient_privilege then null;
+    when others then
+      if sqlerrm like '%seharusnya%' then
+        raise;
+      end if;
+  end;
+end;
+$$;
+
+reset role;
+
+-- 6) Push yang sama dua kali bersifat idempoten (SPEC P8/S2).
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', current_setting('test.user_a'))::text,
+  true
+);
+
+do $$
+declare
+  v_store uuid := current_setting('test.store_a')::uuid;
+  v_op uuid := gen_random_uuid();
+  v_product uuid := gen_random_uuid();
+  v_result jsonb;
+  n integer;
+begin
+  v_result := sync_push(jsonb_build_array(jsonb_build_object(
+    'op_id', v_op,
+    'table', 'products',
+    'row_id', v_product,
+    'op', 'insert',
+    'payload', jsonb_build_object(
+      'id', v_product,
+      'store_id', v_store,
+      'name', 'Produk Uji Sinkron',
+      'base_unit', 'pcs',
+      'created_at', now(),
+      'updated_at', now()
+    )
+  )));
+
+  if v_result -> 0 ->> 'status' <> 'applied' then
+    raise exception 'push pertama gagal: %', v_result;
+  end if;
+
+  v_result := sync_push(jsonb_build_array(jsonb_build_object(
+    'op_id', v_op,
+    'table', 'products',
+    'row_id', v_product,
+    'op', 'insert',
+    'payload', '{}'::jsonb
+  )));
+
+  if v_result -> 0 ->> 'status' <> 'duplicate' then
+    raise exception 'push kedua seharusnya duplicate: %', v_result;
+  end if;
+
+  select count(*) into n from products
+   where id = v_product and store_id = v_store;
+  if n <> 1 then
+    raise exception 'push idempoten menghasilkan % baris (harus 1)', n;
+  end if;
+
+  -- Payload toko lain harus ditolak.
+  v_result := sync_push(jsonb_build_array(jsonb_build_object(
+    'op_id', gen_random_uuid(),
+    'table', 'products',
+    'row_id', gen_random_uuid(),
+    'op', 'insert',
+    'payload', jsonb_build_object(
+      'id', gen_random_uuid(),
+      'store_id', current_setting('test.store_b')::uuid,
+      'name', 'Produk Toko Lain',
+      'base_unit', 'pcs',
+      'created_at', now(),
+      'updated_at', now()
+    )
+  )));
+
+  if v_result -> 0 ->> 'status' <> 'error' then
+    raise exception 'push lintas toko seharusnya error: %', v_result;
+  end if;
+end;
+$$;
+
+reset role;
+
 rollback;
