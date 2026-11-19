@@ -297,6 +297,7 @@ class Outbox extends Table {
   DateTimeColumn get createdAt => dateTime()();
   IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
   DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
