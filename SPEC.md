@@ -344,6 +344,8 @@ Setiap tahap harus ditutup dengan: semua KP lulus, `dart analyze` bersih, tes un
 | 5 | QRIS/e-wallet/transfer/kartu (pencatatan; gateway opsional) | Pembayaran campuran tercatat benar |
 | 6 | Web admin (laporan, produk) | Laporan dapat dibuka dari laptop |
 
+Status 2026-11-19: Tahap 3 sisi klien dan migrasi server (`0002_sync.sql`) sudah ditulis. Skenario sinkron diuji dengan server palsu: S1, S2, S3, S4, S6, S7, S8 lulus sebagai tes otomatis. Uji ke proyek Supabase DEV (termasuk tes RLS SQL) belum dijalankan karena kredensial proyek belum tersedia. S5 baru diuji pada atomisitas transaksi SQLite; S9 dan S10 menunggu fitur kasir/printer dan opname.
+
 ## 16. Skenario Uji Wajib (sinkron/offline)
 
 | ID | Skenario | Hasil yang diharapkan |
@@ -387,3 +389,9 @@ Multi-cabang di UI, utang ke pemasok, integrasi kartu langsung, e-commerce/marke
 | 2026-11-17 | Impor tidak mengisi stok; stok awal hanya lewat `initial`/`opname_adjust` | Sesuai §14.9: file hanya berisi harga, bukan jumlah fisik |
 | 2026-11-17 | Tahap 1 wajib membuat ID perangkat lokal saat app pertama dijalankan, sebelum login Tahap 3 ada | Server mewajibkan `sales.device_id` (§7). Tanpa ID perangkat, penjualan offline tidak akan bisa disinkronkan |
 | 2026-11-18 | Pilihan tema (ikut sistem/terang/gelap) disimpan di `app_settings` dengan kunci `theme_mode`, bukan tabel baru | Setelan tampilan hanya milik perangkat, tidak perlu disinkronkan; tabel `app_settings` sudah tersedia dan tidak mengubah skema server |
+| 2026-11-19 | Tanpa `SUPABASE_URL`/`SUPABASE_ANON_KEY`, app berjalan mode lokal (pemilik) dan layar masuk tidak muncul; kredensial hanya lewat `--dart-define`, bukan file rahasia | Kasir harus tetap bisa dipakai sebelum proyek Supabase siap, dan hanya `anon key` yang boleh ada di app (P9) |
+| 2026-11-19 | Sinkron: klien mengirim `outbox` berurutan lewat RPC `sync_push` (idempoten dengan `applied_ops`), lalu menarik data baru lewat `sync_pull` per tabel dengan cursor `sync_state` | Satu operasi gagal tidak menghentikan yang lain, kirim ulang aman (S1/S2), dan jaringan putus melanjutkan dari posisi terakhir (S7) |
+| 2026-11-19 | Konflik data master memakai `updated_at` terbaru; ledger hanya ditambah. Barcode ganda tidak ditimpa: operasi tetap di antrean berlabel "Perlu diselesaikan" dan baris server yang bentrok dicatat di `sync_state` | Sesuai SPEC §8 dan S4; pemilik bisa memutuskan sendiri, data tidak hilang diam-diam |
+| 2026-11-19 | Peran `staff` tidak melihat tombol impor dan bagian backup; RLS server membatasi tulis `stores`/`profiles` hanya untuk `owner` | SPEC §5: pengaturan dan pengelolaan pengguna milik pemilik; penyembunyian HPP tetap hanya di UI sesuai catatan §5 |
+| 2026-11-19 | Backup: file JSON harian di folder dokumen app (disimpan 14 hari) + ekspor/impor manual. Tema dan ID perangkat tidak ikut diganti saat pemulihan; unggah otomatis ke Google Drive belum dikerjakan | Backup tetap jalan tanpa dependensi baru; ID perangkat harus stabil agar struk dan audit tidak berubah. Pemilik menyalin file ke Drive secara manual |
+| 2026-11-19 | `outbox` klien mendapat kolom `last_attempt_at` (Drift versi 2) untuk jeda coba ulang eksponensial | Tanpa jeda, perangkat yang offline akan menghajar server terus-menerus dan menguras baterai |

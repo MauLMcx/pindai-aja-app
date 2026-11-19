@@ -159,6 +159,41 @@ Catatan pemetaan impor:
 
 Catatan Windows: tes Drift memakai `NativeDatabase`, sehingga butuh `sqlite3.dll` yang bisa ditemukan proses tes. Aplikasi Android sendiri memakai `sqlite3_flutter_libs`, jadi tidak terpengaruh.
 
+### 6.3 Login, sinkron, dan backup (Tahap 3)
+
+**Menyiapkan server dev (sekali saja):**
+
+1. Buat proyek Supabase DEV, lalu jalankan `supabase/migrations/0001_init.sql` dan `0002_sync.sql` di SQL Editor (atau `supabase db push`).
+2. Buat pengguna pemilik di Dashboard → Authentication → Add user (centang *Auto Confirm User*).
+3. Salin `supabase/seed/0001_store.sql`, ganti `ganti@email.com` dengan email pemilik, lalu jalankan. Toko memakai UUID `5807696d-3bd5-568a-bb71-28efce36114b` agar cocok dengan data impor lama.
+4. Untuk staf, buat pengguna lagi lalu ulangi blok `insert into profiles` dengan `role = 'staff'`.
+5. Jalankan tes RLS: `psql "$DATABASE_URL" -v user_a=... -v store_a=... -v user_b=... -v store_b=... -f supabase/tests/rls_test.sql`.
+
+**Menjalankan app dengan server:**
+
+```
+flutter run --dart-define=SUPABASE_URL=https://xxx.supabase.co --dart-define=SUPABASE_ANON_KEY=eyJ...
+```
+
+Tanpa dua define itu app tetap jalan dalam **mode lokal** (tanpa layar masuk). Hanya `anon key` yang dipakai; jangan pernah menaruh `service_role` di app.
+
+**Cara kerja sinkron:**
+
+- Semua perubahan ditulis ke SQLite + `outbox` dalam satu transaksi, jadi kasir tidak menunggu jaringan.
+- Saat ada sesi login, app mengirim outbox berurutan lewat RPC `sync_push` (idempoten: `op_id` yang sama tidak diterapkan dua kali), lalu menarik data baru lewat `sync_pull` per tabel memakai `server_seq` dan cursor di `sync_state`.
+- Data master memakai `updated_at` terbaru; ledger stok/harga/utang hanya ditambah. Barcode ganda tetap di antrean dengan label "Perlu diselesaikan", tidak ditimpa.
+- Sinkron berjalan otomatis saat app dibuka, saat kembali ke depan, dan tiap 3 menit. Tombol manual ada di Pengaturan → Sinkron.
+- Sesi login disimpan Supabase, jadi app tetap terbuka dan kasir tetap jalan tanpa internet (S8).
+
+**Backup:**
+
+- Saat app dibuka, dibuat satu file JSON per hari di folder dokumen app (`backups/`), disimpan 14 hari.
+- Pengaturan → Backup: "Buat file backup" (pilih lokasi simpan) dan "Pulihkan" (data lokal diganti isi file).
+- Tema dan ID perangkat tidak ikut diganti saat pemulihan.
+- Salinan ke Google Drive masih **manual**: unggah file backup secara berkala. Unggah otomatis belum dikerjakan.
+
+**Tes otomatis:** `flutter test` mencakup alur sinkron S1–S4, S6–S8 dengan server palsu, login + sesi offline, peran, identitas perangkat, dan backup. Printer, kamera, serta perilaku HP asli tetap wajib diuji manual.
+
 ## 7. Pengujian
 
 | Level | Isi | Alat |

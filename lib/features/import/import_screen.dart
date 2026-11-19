@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/db/database_provider.dart';
+import '../../core/sync/sync_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../products/products_providers.dart';
 import 'product_importer.dart';
@@ -48,6 +50,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
       if (!mounted) return;
       setState(() => _outcome = outcome);
+      unawaited(ref.read(syncControllerProvider.notifier).syncNow(force: true));
     } on FormatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (error) {

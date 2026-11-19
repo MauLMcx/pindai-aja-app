@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../core/auth/session_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../import/import_screen.dart';
 import '../products/products_providers.dart';
@@ -13,20 +14,22 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final products = ref.watch(productListProvider);
+    final canImport = ref.watch(sessionProvider).value?.canManage ?? true;
     return Scaffold(
       body: products.when(
         loading: () => const _HomeLoading(),
         error: (error, _) => _HomeError(error: error),
-        data: (items) => _HomeView(items: items),
+        data: (items) => _HomeView(items: items, canImport: canImport),
       ),
     );
   }
 }
 
 class _HomeView extends StatefulWidget {
-  const _HomeView({required this.items});
+  const _HomeView({required this.items, required this.canImport});
 
   final List<ProductListItem> items;
+  final bool canImport;
 
   @override
   State<_HomeView> createState() => _HomeViewState();
@@ -88,6 +91,7 @@ class _HomeViewState extends State<_HomeView> {
             return _HomeHeader(
               onImport: _openImport,
               onSettings: _openSettings,
+              canImport: widget.canImport,
             );
           case 1:
             return Padding(
@@ -193,10 +197,15 @@ class _HomeViewState extends State<_HomeView> {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onImport, required this.onSettings});
+  const _HomeHeader({
+    required this.onImport,
+    required this.onSettings,
+    required this.canImport,
+  });
 
   final VoidCallback onImport;
   final VoidCallback onSettings;
+  final bool canImport;
 
   @override
   Widget build(BuildContext context) {
@@ -262,13 +271,18 @@ class _HomeHeader extends StatelessWidget {
                           icon: const Icon(Icons.settings_rounded, size: 22),
                           style: _headerActionStyle(),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          tooltip: 'Impor produk',
-                          onPressed: onImport,
-                          icon: const Icon(Icons.upload_file_rounded, size: 22),
-                          style: _headerActionStyle(),
-                        ),
+                        if (canImport) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Impor produk',
+                            onPressed: onImport,
+                            icon: const Icon(
+                              Icons.upload_file_rounded,
+                              size: 22,
+                            ),
+                            style: _headerActionStyle(),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 22),
