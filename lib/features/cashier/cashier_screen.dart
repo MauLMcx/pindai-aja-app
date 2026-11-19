@@ -135,7 +135,7 @@ class _CashierScreenState extends ConsumerState<CashierScreen> {
     final cash = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.canvas,
+      backgroundColor: AppPalette.of(context).canvas,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -205,6 +205,7 @@ class _CashierScreenState extends ConsumerState<CashierScreen> {
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productListProvider);
+    final palette = AppPalette.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kasir'),
@@ -235,9 +236,9 @@ class _CashierScreenState extends ConsumerState<CashierScreen> {
           : SafeArea(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: AppColors.line)),
+                decoration: BoxDecoration(
+                  color: palette.card,
+                  border: Border(top: BorderSide(color: palette.line)),
                 ),
                 child: Row(
                   children: [
@@ -246,19 +247,19 @@ class _CashierScreenState extends ConsumerState<CashierScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
+                          Text(
                             'Total',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.muted,
+                              color: palette.muted,
                             ),
                           ),
                           Text(
                             formatRupiah(_total),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.primaryDeep,
+                              color: palette.primaryDeep,
                             ),
                           ),
                         ],
@@ -337,6 +338,7 @@ class _CashierProductTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final price = item.sellPrice;
     final unit = item.sellUnitName ?? item.baseUnit;
     final factor = item.sellFactor ?? 1;
@@ -346,7 +348,7 @@ class _CashierProductTile extends StatelessWidget {
         : '${item.name} (${item.variant})';
 
     return Material(
-      color: Colors.white,
+      color: palette.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -355,7 +357,7 @@ class _CashierProductTile extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.line),
+            border: Border.all(color: palette.line),
           ),
           child: Row(
             children: [
@@ -363,14 +365,10 @@ class _CashierProductTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.09),
+                  color: palette.primary.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
-                  Icons.pets,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
+                child: Icon(Icons.pets, color: palette.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -392,8 +390,8 @@ class _CashierProductTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11.5,
                         color: item.stockBase <= 0
-                            ? AppColors.warning
-                            : AppColors.muted,
+                            ? palette.warning
+                            : palette.muted,
                       ),
                     ),
                   ],
@@ -404,30 +402,27 @@ class _CashierProductTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (price == null)
-                    const Text(
+                    Text(
                       'Atur harga',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.warning,
+                        color: palette.warning,
                       ),
                     )
                   else
                     Text(
                       formatRupiah(price),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primaryDeep,
+                        color: palette.primaryDeep,
                       ),
                     ),
                   const SizedBox(height: 2),
                   Text(
                     'per $unit',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.muted,
-                    ),
+                    style: TextStyle(fontSize: 10.5, color: palette.muted),
                   ),
                 ],
               ),
@@ -459,6 +454,7 @@ class _CartSheetState extends State<_CartSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final media = MediaQuery.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
@@ -471,7 +467,7 @@ class _CartSheetState extends State<_CartSheet> {
               width: 42,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.line,
+                color: palette.line,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -489,10 +485,7 @@ class _CartSheetState extends State<_CartSheet> {
                   const Spacer(),
                   Text(
                     '${widget.lines.length} produk',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.muted,
-                    ),
+                    style: TextStyle(fontSize: 12, color: palette.muted),
                   ),
                 ],
               ),
@@ -516,9 +509,9 @@ class _CartSheetState extends State<_CartSheet> {
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: AppColors.line)),
+              decoration: BoxDecoration(
+                color: palette.card,
+                border: Border(top: BorderSide(color: palette.line)),
               ),
               child: SafeArea(
                 top: false,
@@ -527,17 +520,17 @@ class _CartSheetState extends State<_CartSheet> {
                   children: [
                     Row(
                       children: [
-                        const Text(
+                        Text(
                           'Total',
-                          style: TextStyle(fontSize: 13, color: AppColors.muted),
+                          style: TextStyle(fontSize: 13, color: palette.muted),
                         ),
                         const Spacer(),
                         Text(
                           formatRupiah(_total),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDeep,
+                            color: palette.primaryDeep,
                           ),
                         ),
                       ],
@@ -575,12 +568,13 @@ class _CartLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Column(
         children: [
@@ -602,10 +596,7 @@ class _CartLineTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${formatRupiah(line.unitPrice)} / ${line.unitName}',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AppColors.muted,
-                      ),
+                      style: TextStyle(fontSize: 11.5, color: palette.muted),
                     ),
                   ],
                 ),
@@ -613,10 +604,10 @@ class _CartLineTile extends StatelessWidget {
               IconButton(
                 tooltip: 'Hapus',
                 onPressed: onRemove,
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_outline_rounded,
                   size: 20,
-                  color: AppColors.danger,
+                  color: palette.danger,
                 ),
               ),
             ],
@@ -664,20 +655,17 @@ class _CartLineTile extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.warning_amber_rounded,
                   size: 14,
-                  color: AppColors.warning,
+                  color: palette.warning,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     'Stok tercatat ${line.factorToBase <= 0 ? line.stockBase : line.stockBase ~/ line.factorToBase} '
                     '${line.unitName} — transaksi tetap bisa disimpan',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.warning,
-                    ),
+                    style: TextStyle(fontSize: 10.5, color: palette.warning),
                   ),
                 ),
               ],
@@ -722,6 +710,7 @@ class _SellPriceDialogState extends State<_SellPriceDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final item = widget.item;
     return AlertDialog(
       title: const Text('Atur harga jual'),
@@ -732,7 +721,7 @@ class _SellPriceDialogState extends State<_SellPriceDialog> {
           children: [
             Text(
               '${item.name} per ${item.sellUnitName ?? item.baseUnit}',
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              style: TextStyle(color: palette.muted, fontSize: 13),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -787,6 +776,7 @@ class _CashDialogState extends State<_CashDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final total = widget.total;
     final cash = _cash;
     final change = cash - total;
@@ -851,7 +841,7 @@ class _CashDialogState extends State<_CashDialog> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: change < 0 ? AppColors.danger : AppColors.success,
+                color: change < 0 ? palette.danger : palette.success,
               ),
             ),
           ],

@@ -2,9 +2,11 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/widgets.dart' show Key;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' show Material;
 import 'package:petshop_pos/core/db/app_database.dart';
 import 'package:petshop_pos/core/db/database_provider.dart';
 import 'package:petshop_pos/core/db/ledger.dart';
+import 'package:petshop_pos/core/theme/app_theme.dart';
 import 'package:petshop_pos/main.dart';
 
 import '../../support/db_fixture.dart';
@@ -114,5 +116,28 @@ void main() {
           ..where((t) => t.kind.equalsValue(PriceKind.sell)))
         .get();
     expect(sellPrices.single.price, 12500);
+  });
+
+  testWidgets('kartu kasir memakai warna tema gelap', (tester) async {
+    await db
+        .into(db.appSettings)
+        .insertOnConflictUpdate(
+          AppSettingsCompanion.insert(
+            storeId: storeId,
+            key: 'theme_mode',
+            value: 'dark',
+            updatedAt: testNow,
+          ),
+        );
+
+    await openCashier(tester);
+
+    expect(find.text('Pakan A'), findsOneWidget);
+    final tile = tester.widget<Material>(
+      find
+          .ancestor(of: find.text('Pakan A'), matching: find.byType(Material))
+          .first,
+    );
+    expect(tile.color, AppPalette.dark.card);
   });
 }
