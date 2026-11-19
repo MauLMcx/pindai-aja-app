@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:petshop_pos/core/db/app_database.dart';
 import 'package:petshop_pos/core/db/ledger.dart';
+import 'package:petshop_pos/core/store/local_identity.dart';
 import 'package:petshop_pos/core/sync/sync_api.dart';
 import 'package:petshop_pos/core/sync/sync_service.dart';
 import 'package:petshop_pos/features/purchasing/purchase_service.dart';
@@ -298,6 +299,106 @@ void main() {
     expect(outbox, isNotEmpty);
     expect(outbox.every((row) => row.syncedAt == null), isTrue);
     expect(outbox.every((row) => row.attempts == 1), isTrue);
+  });
+
+  test('identitas perangkat lokal dibuat sekali dan bertahan setelah dibuka ulang', () async {
+    final first = await open();
+    await seedTestDb(first);
+
+    final identity = await ensureLocalIdentity(first, storeId: storeId);
+    expect(identity.deviceCode, matches(RegExp(r'^HP[0-9A-F]{6}$')));
+    expect(identity.profile.role, UserRole.owner);
+
+    final again = await ensureLocalIdentity(first, storeId: storeId);
+    expect(again.deviceId, identity.deviceId);
+
+    await first.close();
+    db = null;
+
+    final second = await open();
+    final reopened = await ensureLocalIdentity(second, storeId: storeId);
+    expect(reopened.deviceId, identity.deviceId);
+    expect(reopened.deviceCode, identity.deviceCode);
+    expect(await second.select(second.devices).get(), hasLength(1));
+
+    final deviceOps = (await second.select(second.outbox).get())
+        .where((row) => row.targetTable == 'devices')
+        .toList();
+    expect(deviceOps, hasLength(1));
+  });
+
+  test('10 transaksi kasir offline: nomor struk naik, stok turun, outbox lengkap', () async {
+    final deviceDb = await open();
+    await seedTestDb(deviceDb);
+    final identity = await ensureLocalIdentity(deviceDb, storeId: storeId);
+
+    final purchases = PurchaseService(
+      deviceDb,
+      storeId: storeId,
+      deviceId: identity.deviceId,
+    );
+    await purchases.create(
+      items: const [
+        PurchaseItemInput(
+          productId: productA,
+          unitId: unitPcsA,
+          qty: 20,
+          unitCost: 6000,
+        ),
+      ],
+      purchasedAt: testNow,
+    );
+
+    final api = FakeSyncApi()..failNetwork = true;
+    final sales = SaleService(
+      deviceDb,
+      storeId: storeId,
+      deviceId: identity.deviceId,
+      deviceCode: identity.deviceCode,
+    );
+
+    final receiptNos = <String>[];
+    for (var index = 0; index < 10; index++) {
+      final result = await sales.create(
+        cashierId: identity.cashierId,
+        items: const [
+          SaleDraftItem(
+            productId: productA,
+            unitId: unitPcsA,
+            qty: 1,
+            unitPrice: 10000,
+          ),
+        ],
+        payments: const [
+          SalePaymentInput(method: PayMethod.cash, amount: 10000),
+        ],
+        soldAt: testNow,
+      );
+      receiptNos.add(result.sale.receiptNo);
+      expect(result.changeAmount, 0);
+    }
+
+    expect(
+      receiptNos,
+      [
+        for (var index = 1; index <= 10; index++)
+          '${identity.deviceCode}-20261118-${index.toString().padLeft(4, '0')}',
+      ],
+    );
+    expect(receiptNos.toSet(), hasLength(10));
+    expect(await deviceDb.stockBase(productA), 10);
+
+    final saleOutbox = (await deviceDb.select(deviceDb.outbox).get())
+        .where((row) => row.targetTable == 'sales')
+        .toList();
+    expect(saleOutbox, hasLength(10));
+    expect(saleOutbox.map((row) => row.opId).toSet(), hasLength(10));
+    expect(saleOutbox.every((row) => row.syncedAt == null), isTrue);
+
+    // Semua transaksi tetap tersimpan walau antrean belum bisa dikirim.
+    final report = await SyncService(deviceDb, api).pushOutbox();
+    expect(report.ok, isFalse);
+    expect(await deviceDb.select(deviceDb.sales).get(), hasLength(10));
   });
 }
 
