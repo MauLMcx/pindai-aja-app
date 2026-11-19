@@ -143,7 +143,7 @@ Tips:
 - [x] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); migrasi `0001_init`–`0005_sync_push_robust` diterapkan, tes RLS dan tes sinkron lulus (2026-11-18, 24 tabel, RLS aktif semua). Advisor keamanan tanpa ERROR.
 - [x] Layanan database klien: ledger stok/utang (append-only), penjualan tunai/kredit/campuran/diskon/hold/void, barang masuk + riwayat harga, stok opname, retur jual/beli, dan laporan omzet/HPP/laba. Setiap tulisan menyertakan baris `outbox` dalam transaksi Drift yang sama.
 - [x] Mesin sinkron klien `SyncService` + `SupabaseSyncApi`: push idempoten per `op_id`, pull per tabel mengikuti `server_seq`, status `applied|skipped|error`, dan kegagalan jaringan tidak menghapus antrean.
-- [x] Tes host: 65 tes lulus (`flutter analyze` bersih), termasuk 11 tes sinkron dengan transport palsu tanpa jaringan.
+- [x] Tes host: 68 tes lulus (`flutter analyze` bersih), termasuk 11 tes sinkron dengan transport palsu tanpa jaringan.
 - [x] Tes perangkat Android (PKG110, Android 16): database SQLite file nyata di folder aplikasi, data bertahan setelah tutup–buka, alur beli → jual → stok → outbox → push/pull, dan mode jaringan mati. Jalankan `flutter test integration_test -d <serial>`. 4 tes lulus (2026-11-18).
 
 ### 6.2 Status pelaksanaan Tahap 1 (kasir, 2026-11-19)
@@ -153,6 +153,7 @@ Tips:
 - [x] Harga jual kosong: dialog "Atur harga jual" menyimpan ke `product_units` + `price_history` (`sell`) + outbox, dan melepas `needs_price_review` bila semua satuan jual berharga.
 - [x] Pembayaran tunai: uang diterima, tombol cepat (uang pas/pecahan), kembalian, transaksi disimpan dalam satu transaksi SQLite bersama `outbox`.
 - [x] Struk di layar: nama toko, nomor `<kode perangkat>-<yyyyMMdd>-<counter>`, item, total, bayar, kembali. Cetak printer dan scan kamera tetap **manual** (belum diklaim selesai).
+- [x] Semua kartu, keranjang, dan dialog kasir memakai `AppPalette`, jadi tetap terbaca pada tema terang maupun gelap.
 - [x] Tes host kasir: jual tunai end-to-end (stok turun, outbox bertambah, nomor struk benar) dan alur harga jual kosong.
 - [x] Tes perangkat: identitas lokal bertahan setelah database dibuka ulang, dan 10 transaksi kasir offline berturut-turut menaikkan nomor struk tanpa duplikat, menurunkan stok, dan meninggalkan 10 entri `outbox` `sales` yang belum tersinkron. 6 tes perangkat lulus (2026-11-19).
 - [ ] Belum: diskon baris/transaksi, pelanggan, bayar campuran, tahan (hold), void dari layar, scan kamera, cetak struk, cetak ulang.
