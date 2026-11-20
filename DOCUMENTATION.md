@@ -164,10 +164,10 @@ Catatan Windows: tes Drift memakai `NativeDatabase`, sehingga butuh `sqlite3.dll
 - [x] Barang masuk: `purchases` + `purchase_items` + mutasi `purchase_in` + `price_history` `buy`, dengan peringatan bila harga beli berubah.
 - [x] Daftar stok dan "Perlu dibeli": saldo dari ledger, pengelompokan per pemasok utama, ubah stok minimum, pencarian nama/merek/barcode, filter per lokasi rak, plus banner peringatan di beranda saat stok menipis.
 - [x] Penataan barang: `products.shelf_location` + riwayat `putaway_log`.
-- [x] Opname: sesi baru, hitung fisik, selisih saat selesai menjadi `opname_adjust`; sesi selesai terkunci.
+- [x] Opname: sesi baru, hitung fisik, selisih saat selesai menjadi `opname_adjust`; sesi selesai terkunci; cakupan per rak atau kategori (dropdown cakupan, filter pilihan produk).
 - [x] Retur penjualan (dengan atau tanpa struk) dan retur pembelian; refund kredit menulis `debt_ledger` `return_offset`.
 - [x] Riwayat harga per produk (beli/jual).
-- [x] `dart analyze` bersih; seluruh 55 tes lulus, termasuk akurasi stok vs hitungan manual, HPP rata-rata, filter rak, dan pencarian barcode.
+- [x] `dart analyze` bersih; seluruh 56 tes lulus, termasuk akurasi stok vs hitungan manual, HPP rata-rata, filter rak, pencarian barcode, dan cakupan opname per rak/kategori.
 - [ ] Sinkron nyata ke Supabase DEV dan tes RLS (menunggu kredensial pemilik); outbox sudah terisi untuk semua tulisan Tahap 2.
 - [ ] Uji printer/kamera di perangkat nyata (tetap manual, belum diklaim lulus).
 

@@ -47,8 +47,8 @@ lokal lebih dulu, lalu disinkronkan ke Supabase di latar belakang.
 ### Verifikasi
 
 - `dart analyze`: bersih (`No issues found`).
-- Tes unit: **55 tes lulus**, termasuk akurasi stok vs hitungan manual, HPP
-  rata-rata, filter rak, dan pencarian barcode.
+- Tes unit: **56 tes lulus**, termasuk akurasi stok vs hitungan manual, HPP
+  rata-rata, filter rak, pencarian barcode, dan cakupan opname per rak/kategori.
 - Tes perangkat (`integration_test/stock_flows_test.dart`): alur pembelian,
   stok, minimum/rak, riwayat harga, dan penataan lulus; langkah opname dan
   retur masih diverifikasi.
