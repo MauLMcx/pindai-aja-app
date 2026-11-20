@@ -35,54 +35,15 @@ class OpnameDetailScreen extends ConsumerWidget {
       }
     }
 
-    final counted = TextEditingController(
-      text: previous?.countedBase.toString() ?? '',
-    );
     final amount = await showDialog<int>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(product.displayName),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Stok buku: ${product.stockBase} ${product.baseUnit}'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: counted,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Jumlah fisik (${product.baseUnit})',
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = int.tryParse(counted.text.trim());
-              if (value == null || value < 0) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(
-                    content: Text('Jumlah fisik harus angka 0 atau lebih.'),
-                  ),
-                );
-                return;
-              }
-              Navigator.of(dialogContext).pop(value);
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
+      builder: (_) => _CountDialog(
+        title: product.displayName,
+        stockLabel: 'Stok buku: ${product.stockBase} ${product.baseUnit}',
+        unit: product.baseUnit,
+        initialValue: previous?.countedBase.toString() ?? '',
       ),
     );
-    counted.dispose();
     if (amount == null || !context.mounted) return;
 
     try {
@@ -253,6 +214,83 @@ class OpnameDetailScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Dialog input jumlah fisik. Controller dimiliki widget ini agar
+/// di-dispose setelah animasi tutup selesai.
+class _CountDialog extends StatefulWidget {
+  const _CountDialog({
+    required this.title,
+    required this.stockLabel,
+    required this.unit,
+    required this.initialValue,
+  });
+
+  final String title;
+  final String stockLabel;
+  final String unit;
+  final String initialValue;
+
+  @override
+  State<_CountDialog> createState() => _CountDialogState();
+}
+
+class _CountDialogState extends State<_CountDialog> {
+  late final TextEditingController _counted;
+
+  @override
+  void initState() {
+    super.initState();
+    _counted = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _counted.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = int.tryParse(_counted.text.trim());
+    if (value == null || value < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Jumlah fisik harus angka 0 atau lebih.')),
+      );
+      return;
+    }
+    Navigator.of(context).pop(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.stockLabel),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _counted,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Jumlah fisik (${widget.unit})',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Simpan')),
+      ],
     );
   }
 }

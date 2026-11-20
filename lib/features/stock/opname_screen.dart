@@ -11,11 +11,7 @@ import 'stock_providers.dart';
 class OpnameScreen extends ConsumerWidget {
   const OpnameScreen({super.key});
 
-  Future<void> _start(
-    BuildContext context,
-    WidgetRef ref,
-    String scope,
-  ) async {
+  Future<void> _start(BuildContext context, WidgetRef ref, String scope) async {
     final db = ref.read(appDatabaseProvider);
     final store = await ensureLocalStore(db);
     final note = scope.trim();
@@ -115,6 +111,61 @@ class OpnameScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Dialog "Mulai stok opname". Controller dimiliki widget ini agar
+/// di-dispose saat rute dialog benar-benar selesai (bukan tepat setelah
+/// `showDialog` mengembalikan hasil).
+class _StartOpnameDialog extends StatefulWidget {
+  const _StartOpnameDialog();
+
+  @override
+  State<_StartOpnameDialog> createState() => _StartOpnameDialogState();
+}
+
+class _StartOpnameDialogState extends State<_StartOpnameDialog> {
+  final _scope = TextEditingController(text: 'Seluruh toko');
+
+  @override
+  void dispose() {
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Mulai stok opname'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Hitung barang fisik, lalu masukkan jumlahnya. Selisih akan '
+            'dicatat sebagai penyesuaian stok saat opname diselesaikan.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _scope,
+            decoration: const InputDecoration(
+              labelText: 'Cakupan (opsional)',
+              hintText: 'Contoh: Seluruh toko atau Rak A',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_scope.text),
+          child: const Text('Mulai'),
+        ),
+      ],
     );
   }
 }

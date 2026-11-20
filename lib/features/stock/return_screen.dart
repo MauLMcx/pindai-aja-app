@@ -153,106 +153,10 @@ class _SaleReturnTabState extends ConsumerState<_SaleReturnTab> {
       return;
     }
 
-    var unit = product.defaultSaleUnit ?? product.units.first;
-    final qty = TextEditingController(text: '1');
-    final price = TextEditingController(
-      text: (unit.sellPrice ?? 0) > 0 ? unit.sellPrice.toString() : '',
-    );
-
     final draft = await showDialog<_SaleReturnDraft>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(product.displayName),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Satuan',
-                  border: OutlineInputBorder(),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<UnitChoice>(
-                    isExpanded: true,
-                    value: unit,
-                    items: [
-                      for (final item in product.units)
-                        DropdownMenuItem(value: item, child: Text(item.name)),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() {
-                        unit = value;
-                        if ((value.sellPrice ?? 0) > 0) {
-                          price.text = value.sellPrice.toString();
-                        }
-                      });
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: qty,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Jumlah',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: price,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Harga jual per satuan',
-                  prefixText: 'Rp ',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final jumlah = int.tryParse(qty.text.trim());
-                final harga = int.tryParse(price.text.trim());
-                if (jumlah == null || jumlah <= 0) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(content: Text('Jumlah harus lebih dari 0.')),
-                  );
-                  return;
-                }
-                if (harga == null || harga < 0) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Harga jual tidak boleh negatif.'),
-                    ),
-                  );
-                  return;
-                }
-                Navigator.of(dialogContext).pop(
-                  _SaleReturnDraft(
-                    product: product,
-                    unit: unit,
-                    qty: jumlah,
-                    unitPrice: harga,
-                  ),
-                );
-              },
-              child: const Text('Tambahkan'),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => _SaleReturnDraftDialog(product: product),
     );
-    qty.dispose();
-    price.dispose();
     if (draft == null || !mounted) return;
     setState(() => _drafts.add(draft));
   }
@@ -770,4 +674,126 @@ class _SaleReturnDraft {
   final int unitPrice;
 
   int get amount => qty * unitPrice;
+}
+
+/// Dialog tambah barang retur tanpa struk. Controller dimiliki widget ini
+/// agar di-dispose setelah animasi tutup selesai.
+class _SaleReturnDraftDialog extends StatefulWidget {
+  const _SaleReturnDraftDialog({required this.product});
+
+  final ProductChoice product;
+
+  @override
+  State<_SaleReturnDraftDialog> createState() => _SaleReturnDraftDialogState();
+}
+
+class _SaleReturnDraftDialogState extends State<_SaleReturnDraftDialog> {
+  late UnitChoice _unit;
+  late final TextEditingController _qty;
+  late final TextEditingController _price;
+
+  @override
+  void initState() {
+    super.initState();
+    _unit = widget.product.defaultSaleUnit ?? widget.product.units.first;
+    _qty = TextEditingController(text: '1');
+    _price = TextEditingController(
+      text: (_unit.sellPrice ?? 0) > 0 ? _unit.sellPrice.toString() : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _qty.dispose();
+    _price.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final jumlah = int.tryParse(_qty.text.trim());
+    final harga = int.tryParse(_price.text.trim());
+    if (jumlah == null || jumlah <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Jumlah harus lebih dari 0.')),
+      );
+      return;
+    }
+    if (harga == null || harga < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Harga jual tidak boleh negatif.')),
+      );
+      return;
+    }
+    Navigator.of(context).pop(
+      _SaleReturnDraft(
+        product: widget.product,
+        unit: _unit,
+        qty: jumlah,
+        unitPrice: harga,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.product.displayName),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Satuan',
+              border: OutlineInputBorder(),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<UnitChoice>(
+                isExpanded: true,
+                value: _unit,
+                items: [
+                  for (final item in widget.product.units)
+                    DropdownMenuItem(value: item, child: Text(item.name)),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _unit = value;
+                    if ((value.sellPrice ?? 0) > 0) {
+                      _price.text = value.sellPrice.toString();
+                    }
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _qty,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Jumlah',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _price,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Harga jual per satuan',
+              prefixText: 'Rp ',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Tambahkan')),
+      ],
+    );
+  }
 }
