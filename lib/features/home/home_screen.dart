@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../cashier/cashier_screen.dart';
 import '../import/import_screen.dart';
 import '../products/products_providers.dart';
+import '../sales/sales_history_screen.dart';
 import '../settings/settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -62,6 +63,12 @@ class _HomeViewState extends State<_HomeView> {
         .push(MaterialPageRoute<void>(builder: (_) => const CashierScreen()));
   }
 
+  void _openHistory() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const SalesHistoryScreen()));
+  }
+
   List<ProductListItem> get _visibleItems {
     final query = _query.trim().toLowerCase();
     return widget.items.where((item) {
@@ -98,6 +105,7 @@ class _HomeViewState extends State<_HomeView> {
               onImport: _openImport,
               onSettings: _openSettings,
               onCashier: _openCashier,
+              onHistory: _openHistory,
               canImport: widget.canImport,
             );
           case 1:
@@ -208,12 +216,14 @@ class _HomeHeader extends StatelessWidget {
     required this.onImport,
     required this.onSettings,
     required this.onCashier,
+    required this.onHistory,
     required this.canImport,
   });
 
   final VoidCallback onImport;
   final VoidCallback onSettings;
   final VoidCallback onCashier;
+  final VoidCallback onHistory;
   final bool canImport;
 
   @override
@@ -279,6 +289,16 @@ class _HomeHeader extends StatelessWidget {
                           onPressed: onCashier,
                           icon: const Icon(
                             Icons.point_of_sale_rounded,
+                            size: 22,
+                          ),
+                          style: _headerActionStyle(),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          tooltip: 'Riwayat transaksi',
+                          onPressed: onHistory,
+                          icon: const Icon(
+                            Icons.receipt_long_rounded,
                             size: 22,
                           ),
                           style: _headerActionStyle(),

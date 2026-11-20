@@ -254,6 +254,62 @@ void main() {
     );
     expect(await db.stockBase(productA), -1);
   });
+
+  test('transaksi ditahan dilanjutkan: stok dan pembayaran baru dicatat saat selesai', () async {
+    final held = await service.create(
+      cashierId: staffId,
+      items: const [
+        SaleDraftItem(
+          productId: productA,
+          unitId: unitPcsA,
+          qty: 2,
+          unitPrice: 10000,
+          discount: 1000,
+        ),
+      ],
+      discountTotal: 500,
+      soldAt: testNow,
+      status: SaleStatus.hold,
+    );
+
+    expect(held.sale.status, SaleStatus.hold);
+    expect(await db.stockBase(productA), 0);
+    expect(await db.select(db.payments).get(), isEmpty);
+
+    final done = await service.completeHeld(
+      saleId: held.sale.id,
+      payments: const [SalePaymentInput(method: PayMethod.cash, amount: 20000)],
+      discountTotal: 500,
+      at: testNow.add(const Duration(minutes: 5)),
+    );
+
+    expect(done.sale.status, SaleStatus.completed);
+    expect(done.sale.subtotal, 19000);
+    expect(done.sale.total, 18500);
+    expect(done.sale.paidTotal, 20000);
+    expect(done.changeAmount, 1500);
+    expect(await db.stockBase(productA), -2);
+    expect(await db.select(db.payments).get(), hasLength(1));
+
+    final item = (await db.select(db.saleItems).get()).single;
+    expect(item.discount, 1000);
+    expect(item.lineTotal, 19000);
+  });
+
+  test('transaksi selesai tidak bisa dilanjutkan lagi', () async {
+    final done = await _sale(service);
+
+    await expectLater(
+      service.completeHeld(
+        saleId: done.sale.id,
+        payments: const [
+          SalePaymentInput(method: PayMethod.cash, amount: 10000),
+        ],
+      ),
+      throwsStateError,
+    );
+    expect(await db.stockBase(productA), -1);
+  });
 }
 
 Future<SaleResult> _sale(SaleService service) {

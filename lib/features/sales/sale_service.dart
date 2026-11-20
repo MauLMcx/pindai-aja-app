@@ -263,44 +263,11 @@ class SaleService {
 
       for (final payment in payments) {
         if (status == SaleStatus.hold) break;
-        final paymentId = newId();
-        await db
-            .into(db.payments)
-            .insert(
-              PaymentsCompanion.insert(
-                id: paymentId,
-                storeId: storeId,
-                saleId: saleId,
-                method: payment.method,
-                amount: payment.amount,
-                status: Value(payment.status),
-                reference: Value(payment.reference),
-                paidAt: at,
-                createdAt: createdAt,
-                updatedAt: createdAt,
-                deviceId: Value(deviceId),
-              ),
-            );
-
-        await enqueueOutbox(
-          db,
-          table: 'payments',
-          rowId: paymentId,
-          op: 'insert',
-          payload: {
-            'id': paymentId,
-            'store_id': storeId,
-            'sale_id': saleId,
-            'method': const PayMethodConverter().toSql(payment.method),
-            'amount': payment.amount,
-            'status': const PaymentStatusConverter().toSql(payment.status),
-            'reference': payment.reference,
-            'paid_at': at.toIso8601String(),
-            'created_at': createdAt.toIso8601String(),
-            'updated_at': createdAt.toIso8601String(),
-            'device_id': deviceId,
-          },
-          at: createdAt,
+        await _insertPayment(
+          saleId: saleId,
+          payment: payment,
+          at: at,
+          createdAt: createdAt,
         );
       }
 
@@ -324,6 +291,139 @@ class SaleService {
 
       return SaleResult(
         sale: sale,
+        debtAmount: debtAmount,
+        changeAmount: changeAmount,
+      );
+    });
+  }
+
+  /// Melanjutkan transaksi yang ditahan lalu menyelesaikannya.
+  ///
+  /// Stok baru berkurang di sini, jadi transaksi yang ditahan tidak pernah
+  /// mengubah stok dan tidak mencatat pembayaran (SPEC §6.4).
+  Future<SaleResult> completeHeld({
+    required String saleId,
+    required List<SalePaymentInput> payments,
+    int? discountTotal,
+    DateTime? at,
+  }) {
+    return db.transaction(() async {
+      final sale = await (db.select(
+        db.sales,
+      )..where((t) => t.id.equals(saleId))).getSingleOrNull();
+      if (sale == null) {
+        throw StateError('penjualan tidak ditemukan');
+      }
+      if (sale.status != SaleStatus.hold) {
+        throw StateError('transaksi ini tidak sedang ditahan');
+      }
+      for (final payment in payments) {
+        if (payment.amount < 0) {
+          throw ArgumentError('nominal pembayaran tidak boleh negatif');
+        }
+      }
+
+      final subtotal = sale.subtotal;
+      final discount = discountTotal ?? sale.discountTotal;
+      if (discount < 0 || discount > subtotal) {
+        throw ArgumentError('diskon transaksi melebihi subtotal');
+      }
+      final total = subtotal - discount;
+      final paid = _paidTotal(payments);
+      final debtAmount = total > paid ? total - paid : 0;
+      final changeAmount = paid > total ? paid - total : 0;
+      if (debtAmount > 0 && sale.customerId == null) {
+        throw StateError('penjualan kredit membutuhkan pelanggan');
+      }
+
+      final now = (at ?? DateTime.now()).toUtc();
+      final createdAt = sale.createdAt;
+
+      for (final payment in payments) {
+        await _insertPayment(
+          saleId: saleId,
+          payment: payment,
+          at: now,
+          createdAt: createdAt,
+        );
+      }
+
+      final items = await (db.select(
+        db.saleItems,
+      )..where((t) => t.saleId.equals(saleId))).get();
+
+      for (final item in items) {
+        await addStockMovement(
+          db,
+          id: newId(),
+          storeId: storeId,
+          productId: item.productId,
+          qtyBaseDelta: -item.qtyBase,
+          type: MovementType.saleOut,
+          occurredAt: now,
+          refType: 'sale',
+          refId: saleId,
+          costPerBase: item.costPerBase,
+          deviceId: deviceId,
+        );
+      }
+
+      if (debtAmount > 0) {
+        await addDebtEntry(
+          db,
+          id: newId(),
+          storeId: storeId,
+          customerId: sale.customerId!,
+          delta: debtAmount,
+          type: DebtType.saleCredit,
+          occurredAt: now,
+          refId: saleId,
+          deviceId: deviceId,
+        );
+      }
+
+      await (db.update(db.sales)..where((t) => t.id.equals(saleId))).write(
+        SalesCompanion(
+          discountTotal: Value(discount),
+          total: Value(total),
+          paidTotal: Value(paid),
+          changeAmount: Value(changeAmount),
+          status: const Value(SaleStatus.completed),
+          updatedAt: Value(now),
+        ),
+      );
+
+      await enqueueOutbox(
+        db,
+        table: 'sales',
+        rowId: saleId,
+        op: 'update',
+        payload: {
+          'id': saleId,
+          'store_id': storeId,
+          'receipt_no': sale.receiptNo,
+          'cashier_id': sale.cashierId,
+          'customer_id': sale.customerId,
+          'sold_at': sale.soldAt.toUtc().toIso8601String(),
+          'subtotal': subtotal,
+          'discount_total': discount,
+          'total': total,
+          'paid_total': paid,
+          'change_amount': changeAmount,
+          'status': const SaleStatusConverter().toSql(SaleStatus.completed),
+          'note': sale.note,
+          'updated_at': now.toIso8601String(),
+          'device_id': deviceId,
+        },
+        at: now,
+      );
+
+      final updated = await (db.select(
+        db.sales,
+      )..where((t) => t.id.equals(saleId))).getSingle();
+
+      return SaleResult(
+        sale: updated,
         debtAmount: debtAmount,
         changeAmount: changeAmount,
       );
@@ -466,6 +566,64 @@ class SaleService {
         'device_id': deviceId,
       },
       at: soldAt,
+    );
+  }
+
+  int _paidTotal(List<SalePaymentInput> payments) {
+    var paid = 0;
+    for (final payment in payments) {
+      if (payment.method != PayMethod.credit &&
+          payment.status == PaymentStatus.confirmed) {
+        paid += payment.amount;
+      }
+    }
+    return paid;
+  }
+
+  Future<void> _insertPayment({
+    required String saleId,
+    required SalePaymentInput payment,
+    required DateTime at,
+    required DateTime createdAt,
+  }) async {
+    final paymentId = newId();
+    await db
+        .into(db.payments)
+        .insert(
+          PaymentsCompanion.insert(
+            id: paymentId,
+            storeId: storeId,
+            saleId: saleId,
+            method: payment.method,
+            amount: payment.amount,
+            status: Value(payment.status),
+            reference: Value(payment.reference),
+            paidAt: at,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            deviceId: Value(deviceId),
+          ),
+        );
+
+    await enqueueOutbox(
+      db,
+      table: 'payments',
+      rowId: paymentId,
+      op: 'insert',
+      payload: {
+        'id': paymentId,
+        'store_id': storeId,
+        'sale_id': saleId,
+        'method': const PayMethodConverter().toSql(payment.method),
+        'amount': payment.amount,
+        'status': const PaymentStatusConverter().toSql(payment.status),
+        'reference': payment.reference,
+        'paid_at': at.toIso8601String(),
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': createdAt.toIso8601String(),
+        'device_id': deviceId,
+      },
+      at: createdAt,
     );
   }
 
