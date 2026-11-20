@@ -437,9 +437,10 @@ void main() {
       label: 'Retur Pembelian',
     );
     await _pumpUntil(tester, find.text('Pilih dokumen'));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
     await _tapVisible(
       tester,
-      find.text('Pilih dokumen'),
+      find.byType(DropdownButton<String>).first,
       label: 'Pilih dokumen',
     );
     await _pumpUntil(tester, find.textContaining('Pembelian'));
@@ -450,6 +451,8 @@ void main() {
     );
     await _pumpUntil(tester, find.textContaining('Sisa 2 dus'));
     await tester.enterText(find.widgetWithText(TextField, 'dus').last, '1');
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.text('Simpan retur pembelian'),
@@ -465,9 +468,10 @@ void main() {
       label: 'Retur Penjualan',
     );
     await _pumpUntil(tester, find.text('Pilih transaksi'));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
     await _tapVisible(
       tester,
-      find.text('Pilih transaksi'),
+      find.byType(DropdownButton<String>).first,
       label: 'Pilih transaksi',
     );
     await _pumpUntil(tester, find.textContaining('INV/001'));
@@ -478,6 +482,8 @@ void main() {
     );
     await _pumpUntil(tester, find.textContaining('Sisa 1 pcs'));
     await tester.enterText(find.widgetWithText(TextField, 'pcs').last, '1');
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.text('Simpan retur penjualan'),
