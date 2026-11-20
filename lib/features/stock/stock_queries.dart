@@ -16,6 +16,7 @@ class StockRow {
     this.shelfLocation,
     this.supplierId,
     this.supplierName,
+    this.barcodes = const [],
   });
 
   final String productId;
@@ -28,6 +29,9 @@ class StockRow {
   final String? shelfLocation;
   final String? supplierId;
   final String? supplierName;
+
+  /// Barcode semua satuan aktif, untuk pencarian di layar stok.
+  final List<String> barcodes;
 
   bool get isLow => minStockBase > 0 && stockBase < minStockBase;
   int get shortfallBase => isLow ? minStockBase - stockBase : 0;
@@ -249,6 +253,10 @@ StockRow _mapStockRow(QueryRow row) => StockRow(
   shelfLocation: row.readNullable<String>('shelf_location'),
   supplierId: row.readNullable<String>('supplier_id'),
   supplierName: row.readNullable<String>('supplier_name'),
+  barcodes: (row.readNullable<String>('barcodes') ?? '')
+      .split('|')
+      .where((barcode) => barcode.trim().isNotEmpty)
+      .toList(),
 );
 
 const _stockSelect = '''
@@ -261,6 +269,8 @@ select p.id as product_id,
        p.shelf_location as shelf_location,
        p.main_supplier_id as supplier_id,
        s.name as supplier_name,
+       (select group_concat(u.barcode, '|') from product_units u
+         where u.product_id = p.id and u.deleted_at is null) as barcodes,
        coalesce(sum(m.qty_base_delta), 0) as stock_base
 from products p
 left join stock_movements m on m.product_id = p.id

@@ -50,6 +50,7 @@ Future<ProductFixture> addProduct(
   int purchaseFactor = 10000,
   int? sellPrice = 20000,
   String? shelfLocation,
+  String? saleBarcode,
 }) async {
   final now = DateTime.utc(2026, 11, 1);
   final productId = newId();
@@ -80,6 +81,7 @@ Future<ProductFixture> addProduct(
           unitName: 'pcs',
           factorToBase: saleFactor,
           sellPrice: Value(sellPrice),
+          barcode: Value(saleBarcode),
           isDefaultSale: const Value(true),
           createdAt: now,
           updatedAt: now,

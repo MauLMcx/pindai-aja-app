@@ -33,8 +33,8 @@ lokal lebih dulu, lalu disinkronkan ke Supabase di latar belakang.
 
 - Barang masuk: `purchases` + `purchase_items` + mutasi `purchase_in` +
   `price_history`.
-- Daftar stok, pencarian, ubah stok minimum, lokasi rak, dan tab
-  "Perlu dibeli" (dikelompokkan per pemasok).
+- Daftar stok, pencarian nama/merek/barcode, filter per lokasi rak, ubah stok
+  minimum, dan tab "Perlu dibeli" (dikelompokkan per pemasok).
 - Banner peringatan stok menipis di beranda.
 - Penataan barang: `products.shelf_location` + riwayat `putaway_log`.
 - Stok opname: sesi, hitung fisik, selisih menjadi `opname_adjust`; sesi
@@ -47,8 +47,8 @@ lokal lebih dulu, lalu disinkronkan ke Supabase di latar belakang.
 ### Verifikasi
 
 - `dart analyze`: bersih (`No issues found`).
-- Tes unit: **54 tes lulus**, termasuk akurasi stok vs hitungan manual dan
-  HPP rata-rata.
+- Tes unit: **55 tes lulus**, termasuk akurasi stok vs hitungan manual, HPP
+  rata-rata, filter rak, dan pencarian barcode.
 - Tes perangkat (`integration_test/stock_flows_test.dart`): alur pembelian,
   stok, minimum/rak, riwayat harga, dan penataan lulus; langkah opname dan
   retur masih diverifikasi.

@@ -15,6 +15,7 @@ class StockScreen extends ConsumerStatefulWidget {
 
 class _StockScreenState extends ConsumerState<StockScreen> {
   final _search = TextEditingController();
+  String? _shelfFilter;
 
   @override
   void dispose() {
@@ -64,16 +65,27 @@ class _StockScreenState extends ConsumerState<StockScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => _Message('Gagal membaca stok: $error'),
             data: (items) {
-              final filtered = term.isEmpty
-                  ? items
-                  : items
-                        .where(
-                          (row) =>
-                              row.name.toLowerCase().contains(term) ||
-                              (row.brand ?? '').toLowerCase().contains(term) ||
-                              (row.variant ?? '').toLowerCase().contains(term),
-                        )
-                        .toList();
+              final shelves =
+                  items
+                      .map((row) => row.shelfLocation)
+                      .whereType<String>()
+                      .toSet()
+                      .toList()
+                    ..sort();
+              final shelf = shelves.contains(_shelfFilter)
+                  ? _shelfFilter
+                  : null;
+              final filtered = items.where((row) {
+                if (shelf != null && row.shelfLocation != shelf) return false;
+                if (term.isEmpty) return true;
+                return row.name.toLowerCase().contains(term) ||
+                    (row.brand ?? '').toLowerCase().contains(term) ||
+                    (row.variant ?? '').toLowerCase().contains(term) ||
+                    (row.shelfLocation ?? '').toLowerCase().contains(term) ||
+                    row.barcodes.any(
+                      (barcode) => barcode.toLowerCase().contains(term),
+                    );
+              }).toList();
               if (filtered.isEmpty) {
                 return _Message(
                   items.isEmpty
@@ -81,35 +93,71 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                       : 'Produk tidak ditemukan.',
                 );
               }
-              return ListView.separated(
-                itemCount: filtered.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final row = filtered[index];
-                  return ListTile(
-                    isThreeLine: true,
-                    leading: Icon(
-                      row.isLow
-                          ? Icons.warning_amber_rounded
-                          : Icons.inventory_2_outlined,
-                      color: row.isLow
-                          ? Theme.of(context).colorScheme.error
-                          : null,
+              return Column(
+                children: [
+                  if (shelves.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Filter rak',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            isExpanded: true,
+                            value: shelf,
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                child: Text('Semua rak'),
+                              ),
+                              for (final location in shelves)
+                                DropdownMenuItem<String?>(
+                                  value: location,
+                                  child: Text(location),
+                                ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _shelfFilter = value),
+                          ),
+                        ),
+                      ),
                     ),
-                    title: Text(row.displayName),
-                    subtitle: Text(
-                      [
-                        if (row.brand != null) row.brand!,
-                        'Stok ${row.stockBase} ${row.baseUnit}',
-                        if (row.minStockBase > 0) 'minimum ${row.minStockBase}',
-                        if (row.shelfLocation != null)
-                          'rak ${row.shelfLocation}',
-                      ].join(' • '),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final row = filtered[index];
+                        return ListTile(
+                          isThreeLine: true,
+                          leading: Icon(
+                            row.isLow
+                                ? Icons.warning_amber_rounded
+                                : Icons.inventory_2_outlined,
+                            color: row.isLow
+                                ? Theme.of(context).colorScheme.error
+                                : null,
+                          ),
+                          title: Text(row.displayName),
+                          subtitle: Text(
+                            [
+                              if (row.brand != null) row.brand!,
+                              'Stok ${row.stockBase} ${row.baseUnit}',
+                              if (row.minStockBase > 0)
+                                'minimum ${row.minStockBase}',
+                              if (row.shelfLocation != null)
+                                'rak ${row.shelfLocation}',
+                            ].join(' • '),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => showProductSheet(context, row: row),
+                        );
+                      },
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showProductSheet(context, row: row),
-                  );
-                },
+                  ),
+                ],
               );
             },
           ),

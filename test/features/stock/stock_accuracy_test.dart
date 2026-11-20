@@ -170,12 +170,22 @@ void main() {
   });
 
   test('pencarian stok mencocokkan nama dan barcode', () async {
-    await addProduct(db, storeId: store.id, name: 'Whiskas Tuna');
+    await addProduct(
+      db,
+      storeId: store.id,
+      name: 'Whiskas Tuna',
+      saleBarcode: '8991234567890',
+    );
     await addProduct(db, storeId: store.id, name: 'Meo Ikan');
 
     final byName = await loadStockRows(db, search: 'whiskas');
     expect(byName, hasLength(1));
     expect(byName.single.name, 'Whiskas Tuna');
+
+    final byBarcode = await loadStockRows(db, search: '899123');
+    expect(byBarcode, hasLength(1));
+    expect(byBarcode.single.name, 'Whiskas Tuna');
+    expect(byBarcode.single.barcodes, contains('8991234567890'));
 
     final none = await loadStockRows(db, search: 'tidak-ada');
     expect(none, isEmpty);
