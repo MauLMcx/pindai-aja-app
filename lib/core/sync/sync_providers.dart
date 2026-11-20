@@ -12,7 +12,7 @@ import 'sync_engine.dart';
 
 final syncApiProvider = Provider<SyncApi?>((ref) {
   if (!isSupabaseReady) return null;
-  return SupabaseSyncApi(Supabase.instance.client);
+  return SupabaseSyncApi(client: Supabase.instance.client);
 });
 
 final syncEngineProvider = Provider<SyncEngine?>((ref) {

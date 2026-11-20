@@ -56,7 +56,7 @@ python -m unittest -v
 1. Buat proyek Supabase baru khusus **dev** (bukan data toko sungguhan).
 2. Catat **Project Ref** (bagian awal URL proyek).
 3. Buat **Personal Access Token** di pengaturan akun Supabase (menu Access Tokens; letak menu bisa berubah).
-4. Simpan token di `.env` lokal, **jangan commit**. Isi `PROJECT_REF_DEV` dan `SUPABASE_ACCESS_TOKEN` di `mcp.json` (atau lewat variabel lingkungan sistem).
+4. Simpan token di `.env` lokal atau variabel lingkungan sistem, **jangan commit**. `mcp.json` hanya berisi `--project-ref`; `SUPABASE_ACCESS_TOKEN` dibaca dari variabel lingkungan saat server MCP dijalankan, jadi jangan menulis nilainya ke berkas repo.
 
 **Cara cek:** MCP Supabase berstatus tersambung dan hanya bisa membaca (`--read-only` sudah ada di konfigurasi).
 
@@ -105,4 +105,5 @@ Buka CSV di Excel/Google Sheets, lengkapi, lalu serahkan ke agent sebagai data a
 
 - `simulate_sync` dan `seed_demo` di `DOCUMENTATION.md` bagian 4 **belum dibuat**, karena mesin sinkronnya belum ada. Dibuat agent saat Tahap 3.
 - `server.py` memakai API **mcp 2.x** (`MCPServer`, sebelumnya `FastMCP`) dan sudah diuji tersambung ke klien MCP; tool `gen_ean13_internal` berhasil. `requirements.txt` dipin ke `mcp>=2,<3`.
-- MCP `supabase` sengaja dinonaktifkan sampai Project Ref proyek DEV dan `SUPABASE_ACCESS_TOKEN` diisi.
+- MCP `supabase` aktif (read-only) untuk proyek DEV `rutsepsoxwmdpwfnldjq`. Migrasi dan tes RLS sudah dijalankan; `SUPABASE_ACCESS_TOKEN` diisi lewat variabel lingkungan lokal, bukan di repo.
+- Dua pengguna Auth uji `rls-test-a@example.test` dan `rls-test-b@example.test` (masing-masing di toko uji A/B) dipakai oleh `supabase/tests/rls_test.sql`. Jangan pakai akun ini untuk data sungguhan.

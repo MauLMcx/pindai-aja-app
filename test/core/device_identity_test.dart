@@ -22,7 +22,8 @@ void main() {
 
     expect(second.id, first.id);
     expect(second.code, first.code);
-    expect(first.code, hasLength(4));
+    expect(first.code, hasLength(8));
+    expect(first.code, startsWith('HP'));
 
     final devices = await db.select(db.devices).get();
     expect(devices, hasLength(1));

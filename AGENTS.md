@@ -31,3 +31,17 @@ UI dan pesan ke pemilik: Bahasa Indonesia sederhana. Nama kode/tabel: Inggris `s
 
 ## Jika ragu
 Berhenti dan tanya. Jangan mengubah perilaku di SPEC secara diam-diam. Catat keputusan di SPEC §19.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (MauLMcx/pindai-aja-app), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles with default label names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

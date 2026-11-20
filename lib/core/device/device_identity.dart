@@ -159,7 +159,7 @@ DeviceIdentity? _decode(String raw) {
 }
 
 String _shortCode(String id) =>
-    id.replaceAll('-', '').substring(0, 4).toUpperCase();
+    'HP${id.replaceAll('-', '').substring(0, 6).toUpperCase()}';
 
 String _deviceName() {
   return switch (defaultTargetPlatform) {

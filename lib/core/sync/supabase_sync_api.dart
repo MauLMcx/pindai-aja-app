@@ -2,33 +2,31 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'sync_api.dart';
 
-/// Sinkron lewat RPC Postgres `sync_push` dan `sync_pull` (lihat migrasi 0002).
+/// Transport sinkron lewat RPC Supabase (`supabase/migrations/0003_sync_rpc.sql`).
 class SupabaseSyncApi implements SyncApi {
-  SupabaseSyncApi(this._client);
+  SupabaseSyncApi({SupabaseClient? client})
+    : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
 
   @override
-  Future<List<SyncPushResult>> push(List<SyncPushOp> ops) async {
+  Future<List<PushOutcome>> push(List<SyncOp> ops) async {
+    if (ops.isEmpty) return const [];
+
     try {
-      final data = await _client.rpc(
+      final result = await _client.rpc(
         'sync_push',
-        params: {'p_ops': ops.map((op) => op.toJson()).toList()},
+        params: {
+          'p_ops': [for (final op in ops) op.toJson()],
+        },
       );
-      if (data is! List) {
-        throw const SyncNetworkException(
-          'Jawaban server sinkron tidak dikenal.',
-        );
+      if (result is! List) {
+        throw StateError('balasan sync_push tidak dikenali');
       }
-      return data.map((item) {
-        final map = (item as Map).cast<String, dynamic>();
-        return SyncPushResult(
-          opId: '${map['op_id']}',
-          status: '${map['status']}',
-          error: map['error'] as String?,
-          code: map['code'] as String?,
-        );
-      }).toList();
+      return [
+        for (final item in result)
+          PushOutcome.fromJson(Map<String, dynamic>.from(item as Map)),
+      ];
     } on SyncNetworkException {
       rethrow;
     } catch (error) {
@@ -37,22 +35,23 @@ class SupabaseSyncApi implements SyncApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> pull({
-    required String table,
-    required int sinceSeq,
-    int limit = 500,
-  }) async {
+  Future<List<Map<String, dynamic>>> pull(
+    String table,
+    int sinceSeq,
+    int limit,
+  ) async {
     try {
-      final data = await _client.rpc(
+      final result = await _client.rpc(
         'sync_pull',
-        params: {'p_table': table, 'p_since': sinceSeq, 'p_limit': limit},
+        params: {'p_table': table, 'p_since_seq': sinceSeq, 'p_limit': limit},
       );
-      if (data is! List) {
-        throw const SyncNetworkException(
-          'Jawaban server sinkron tidak dikenal.',
-        );
+      if (result is! List) {
+        throw StateError('balasan sync_pull tidak dikenali');
       }
-      return data.map((item) => (item as Map).cast<String, dynamic>()).toList();
+      return [
+        for (final item in result)
+          Map<String, dynamic>.from(item as Map<String, dynamic>),
+      ];
     } on SyncNetworkException {
       rethrow;
     } catch (error) {

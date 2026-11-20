@@ -25,7 +25,8 @@ select set_config('test.user_b', :'user_b', true);
 select set_config('test.store_a', :'store_a', true);
 select set_config('test.store_b', :'store_b', true);
 
--- 1) Setiap tabel yang punya kolom store_id wajib mengaktifkan RLS.
+-- 1) Setiap tabel dasar di schema public wajib mengaktifkan RLS.
+--    Termasuk tabel tanpa store_id seperti `applied_ops` (deny-by-default).
 do $$
 declare
   r record;
@@ -36,13 +37,6 @@ begin
     join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public'
       and c.relkind = 'r'
-      and exists (
-        select 1
-        from information_schema.columns col
-        where col.table_schema = 'public'
-          and col.table_name = c.relname
-          and col.column_name = 'store_id'
-      )
       and not c.relrowsecurity
   loop
     raise exception 'RLS tidak aktif pada tabel %', r.table_name;
@@ -76,6 +70,29 @@ begin
 end;
 $$;
 
+-- 2b) View stock_balance juga wajib mengikuti RLS (security_invoker, migrasi 0002).
+do $$
+declare
+  n integer;
+  store_a uuid := current_setting('test.store_a')::uuid;
+  store_b uuid := current_setting('test.store_b')::uuid;
+begin
+  select count(*) into n from stock_balance where store_id = store_b;
+  if n <> 0 then
+    raise exception 'isolasi gagal: user A melihat % baris stok toko B lewat stock_balance', n;
+  end if;
+
+  -- Bila toko A punya mutasi stok, view harus menampilkannya.
+  select count(*) into n from stock_movements where store_id = store_a;
+  if n > 0 then
+    select count(*) into n from stock_balance where store_id = store_a;
+    if n = 0 then
+      raise exception 'user A tidak melihat stok tokonya sendiri lewat stock_balance';
+    end if;
+  end if;
+end;
+$$;
+
 reset role;
 
 -- 3) Anon tanpa login tidak boleh melihat data apa pun.
@@ -89,6 +106,11 @@ begin
   select count(*) into n from products;
   if n <> 0 then
     raise exception 'anon dapat membaca % baris products', n;
+  end if;
+
+  select count(*) into n from stock_balance;
+  if n <> 0 then
+    raise exception 'anon dapat membaca % baris stock_balance', n;
   end if;
 end;
 $$;

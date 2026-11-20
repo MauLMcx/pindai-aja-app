@@ -91,7 +91,7 @@ class SyncEngine {
       attempted.addAll(due.map((row) => row.opId));
 
       final ops = due.map(_toOp).toList();
-      List<SyncPushResult> results;
+      List<PushOutcome> results;
       try {
         results = await api.push(ops);
       } on SyncNetworkException catch (error) {
@@ -113,8 +113,8 @@ class SyncEngine {
           continue;
         }
 
-        if (result.isOk) {
-          if (result.status == 'duplicate') {
+        if (result.isApplied) {
+          if (result.status == 'skipped') {
             duplicates++;
           } else {
             pushed++;
@@ -134,16 +134,14 @@ class SyncEngine {
     var total = 0;
 
     for (final spec in syncTableSpecs) {
+      // `profiles` dikelola server (dibuat pemilik), jadi tidak ditarik klien.
+      if (spec.name == 'profiles') continue;
       var since = await _applier.cursor(spec.name);
 
       while (true) {
         List<Map<String, dynamic>> rows;
         try {
-          rows = await api.pull(
-            table: spec.name,
-            sinceSeq: since,
-            limit: pullLimit,
-          );
+          rows = await api.pull(spec.name, since, pullLimit);
         } on SyncNetworkException catch (error) {
           return SyncOutcome(
             pulled: total,
@@ -187,9 +185,9 @@ class SyncEngine {
     return now.isAfter(last.add(Duration(seconds: seconds)));
   }
 
-  SyncPushOp _toOp(OutboxData row) {
+  SyncOp _toOp(OutboxData row) {
     final decoded = jsonDecode(row.payload);
-    return SyncPushOp(
+    return SyncOp(
       opId: row.opId,
       table: row.targetTable,
       rowId: row.rowId,
@@ -230,12 +228,14 @@ class SyncEngine {
     }
   }
 
-  String _messageFor(SyncPushResult result) {
-    if (result.code == '23505') {
+  String _messageFor(PushOutcome result) {
+    final detail = result.error ?? '';
+    final lower = detail.toLowerCase();
+    if (lower.contains('duplicate key') || lower.contains('unique')) {
       return 'Bentrok: barcode atau nomor sudah dipakai perangkat lain. '
           'Perlu diselesaikan.';
     }
-    if (result.code == '42501') {
+    if (lower.contains('permission') || lower.contains('row-level security')) {
       return 'Tidak berhak mengirim data ini. Coba masuk ulang.';
     }
     return result.error ?? 'Gagal dikirim ke server.';

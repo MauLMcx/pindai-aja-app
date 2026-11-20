@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../core/auth/session_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../cashier/cashier_screen.dart';
 import '../import/import_screen.dart';
 import '../products/products_providers.dart';
 import '../settings/settings_screen.dart';
@@ -56,6 +57,11 @@ class _HomeViewState extends State<_HomeView> {
         .push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
   }
 
+  void _openCashier() {
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const CashierScreen()));
+  }
+
   List<ProductListItem> get _visibleItems {
     final query = _query.trim().toLowerCase();
     return widget.items.where((item) {
@@ -91,6 +97,7 @@ class _HomeViewState extends State<_HomeView> {
             return _HomeHeader(
               onImport: _openImport,
               onSettings: _openSettings,
+              onCashier: _openCashier,
               canImport: widget.canImport,
             );
           case 1:
@@ -200,11 +207,13 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.onImport,
     required this.onSettings,
+    required this.onCashier,
     required this.canImport,
   });
 
   final VoidCallback onImport;
   final VoidCallback onSettings;
+  final VoidCallback onCashier;
   final bool canImport;
 
   @override
@@ -265,6 +274,16 @@ class _HomeHeader extends StatelessWidget {
                             ],
                           ),
                         ),
+                        IconButton(
+                          tooltip: 'Kasir',
+                          onPressed: onCashier,
+                          icon: const Icon(
+                            Icons.point_of_sale_rounded,
+                            size: 22,
+                          ),
+                          style: _headerActionStyle(),
+                        ),
+                        const SizedBox(width: 8),
                         IconButton(
                           tooltip: 'Pengaturan',
                           onPressed: onSettings,

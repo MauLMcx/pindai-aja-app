@@ -135,13 +135,31 @@ Tips:
 - [x] Proyek Flutter `petshop_pos` (Android + web), struktur `lib/core` dan `lib/features`.
 - [x] Skema Drift 25 tabel + uji database in-memory; `flutter analyze` bersih; 20 tes lulus.
 - [x] Migrasi server `supabase/migrations/0001_init.sql`: tipe enum, tabel §7, RLS semua tabel, trigger `server_seq`, trigger append-only, view `stock_balance`.
-- [x] Tes RLS `supabase/tests/rls_test.sql` (dijalankan setelah proyek dev dan 2 pengguna tersedia).
+- [x] Migrasi lanjutan: `0002_security_hardening` (view `stock_balance` mengikuti RLS, `search_path` fungsi, indeks FK), `0003_sync_rpc` (`applied_ops`, `sync_push`, `sync_pull`), `0004_sync_grants` (cabut akses anon ke RPC sinkron), `0005_sync_push_robust` (kesalahan satu op tidak membatalkan batch).
+- [x] Tes RLS `supabase/tests/rls_test.sql` dan tes sinkron `supabase/tests/sync_test.sql` (dijalankan setelah proyek dev dan 2 pengguna tersedia).
 - [x] CI `.github/workflows/ci.yml`: Flutter analyze/test + tes Python `petshop-dev`.
 - [x] Impor Excel: 86 produk di `tools/out/products_import.csv`.
 - [x] Layar impor + daftar produk: memilih CSV, membuat pemasok/kategori/produk/satuan/harga beli, lalu menampilkan 86 produk di beranda (diverifikasi lewat tes).
-- [ ] Proyek Supabase DEV, URL + anon key di `.env` (menunggu kredensial pemilik).
+- [x] Proyek Supabase DEV siap (`rutsepsoxwmdpwfnldjq`); migrasi `0001_init`–`0005_sync_push_robust` diterapkan, tes RLS dan tes sinkron lulus (2026-11-18, 24 tabel, RLS aktif semua). Advisor keamanan tanpa ERROR.
+- [x] Layanan database klien: ledger stok/utang (append-only), penjualan tunai/kredit/campuran/diskon/hold/void, barang masuk + riwayat harga, stok opname, retur jual/beli, dan laporan omzet/HPP/laba. Setiap tulisan menyertakan baris `outbox` dalam transaksi Drift yang sama.
+- [x] Mesin sinkron klien `SyncService` + `SupabaseSyncApi`: push idempoten per `op_id`, pull per tabel mengikuti `server_seq`, status `applied|skipped|error`, dan kegagalan jaringan tidak menghapus antrean.
+- [x] Tes host: 68 tes lulus (`flutter analyze` bersih), termasuk 11 tes sinkron dengan transport palsu tanpa jaringan.
+- [x] Tes perangkat Android (PKG110, Android 16): database SQLite file nyata di folder aplikasi, data bertahan setelah tutup–buka, alur beli → jual → stok → outbox → push/pull, dan mode jaringan mati. Jalankan `flutter test integration_test -d <serial>`. 4 tes lulus (2026-11-18).
 
-### 6.2 Memuat data awal di app
+### 6.2 Status pelaksanaan Tahap 1 (kasir, 2026-11-19)
+
+- [x] Identitas perangkat lokal: satu baris `devices` dengan kode `HP` + 6 hex, dibuat sekali lalu dipakai ulang; profil pemilik lokal `stableId('user','pemilik-lokal')` tidak disinkronkan (dibuat server di Tahap 3).
+- [x] Layar kasir dari tombol **Kasir** di beranda: cari produk, pilih untuk keranjang, ubah jumlah, hapus baris, lihat total.
+- [x] Harga jual kosong: dialog "Atur harga jual" menyimpan ke `product_units` + `price_history` (`sell`) + outbox, dan melepas `needs_price_review` bila semua satuan jual berharga.
+- [x] Pembayaran tunai: uang diterima, tombol cepat (uang pas/pecahan), kembalian, transaksi disimpan dalam satu transaksi SQLite bersama `outbox`.
+- [x] Struk di layar: nama toko, nomor `<kode perangkat>-<yyyyMMdd>-<counter>`, item, total, bayar, kembali. Cetak printer dan scan kamera tetap **manual** (belum diklaim selesai).
+- [x] Semua kartu, keranjang, dan dialog kasir memakai `AppPalette`, jadi tetap terbaca pada tema terang maupun gelap.
+- [x] Tes host kasir: jual tunai end-to-end (stok turun, outbox bertambah, nomor struk benar) dan alur harga jual kosong.
+- [x] Tes perangkat: identitas lokal bertahan setelah database dibuka ulang, dan 10 transaksi kasir offline berturut-turut menaikkan nomor struk tanpa duplikat, menurunkan stok, dan meninggalkan 10 entri `outbox` `sales` yang belum tersinkron. 6 tes perangkat lulus (2026-11-19).
+- [ ] Belum: diskon baris/transaksi, pelanggan, bayar campuran, tahan (hold), void dari layar, scan kamera, cetak struk, cetak ulang.
+
+
+### 6.3 Memuat data awal di app
 
 1. Di PC, jalankan skrip impor Excel sampai menghasilkan `tools/out/products_import.csv`.
 2. Pemilik mengoreksi dulu harga yang ditandai "perlu dicek".
@@ -163,9 +181,22 @@ Catatan Windows: tes Drift memakai `NativeDatabase`, sehingga butuh `sqlite3.dll
 
 **Menyiapkan server dev (sekali saja):**
 
-1. Buat proyek Supabase DEV, lalu jalankan `supabase/migrations/0001_init.sql` dan `0002_sync.sql` di SQL Editor (atau `supabase db push`).
+1. Buat proyek Supabase DEV, lalu jalankan migrasi berurutan `0001_init` → `0002_security_hardening` → `0003_sync_rpc` → `0004_sync_grants` → `0005_sync_push_robust` (atau `supabase db push`).
 2. Buat pengguna pemilik di Dashboard → Authentication → Add user (centang *Auto Confirm User*).
-3. Salin `supabase/seed/0001_store.sql`, ganti `ganti@email.com` dengan email pemilik, lalu jalankan. Toko memakai UUID `5807696d-3bd5-568a-bb71-28efce36114b` agar cocok dengan data impor lama.
+3. Buat baris toko + profil pemilik (ganti email dan UUID bila perlu):
+
+   ```sql
+   insert into public.stores (id, name, code2, created_at, updated_at)
+   values ('5807696d-3bd5-568a-bb71-28efce36114b', 'Toko Utama', '01', now(), now())
+   on conflict (id) do nothing;
+
+   insert into public.profiles (user_id, store_id, role, display_name, created_at, updated_at)
+   select id, '5807696d-3bd5-568a-bb71-28efce36114b', 'owner', 'Pemilik', now(), now()
+   from auth.users where email = 'ganti@email.com'
+   on conflict (user_id) do update set store_id = excluded.store_id, role = excluded.role;
+   ```
+
+   Toko memakai UUID `5807696d-3bd5-568a-bb71-28efce36114b` agar cocok dengan data impor lama.
 4. Untuk staf, buat pengguna lagi lalu ulangi blok `insert into profiles` dengan `role = 'staff'`.
 5. Jalankan tes RLS: `psql "$DATABASE_URL" -v user_a=... -v store_a=... -v user_b=... -v store_b=... -f supabase/tests/rls_test.sql`.
 
@@ -199,12 +230,14 @@ Tanpa dua define itu app tetap jalan dalam **mode lokal** (tanpa layar masuk). H
 | Level | Isi | Alat |
 |---|---|---|
 | Unit | Money, konversi satuan, HPP rata-rata, diskon, EAN-13, ledger stok | `flutter test` |
-| Integrasi | Drift + outbox + sinkron ke Supabase dev | `integration_test`, `petshop-dev.simulate_sync` |
+| Integrasi | Drift + outbox + sinkron ke Supabase dev; tes perangkat memakai file SQLite nyata + transport palsu | `integration_test` di Android, `petshop-dev.simulate_sync` |
 | RLS/keamanan | Isolasi antar toko, anon tidak bisa baca | Tes SQL/pgTAP atau skrip + Supabase advisor |
 | Web | Alur admin dan laporan | Playwright MCP |
 | Perangkat | Kamera scan, printer Bluetooth, mati lampu | **Manual** dengan checklist di `docs/manual-test.md` |
 
 Checklist manual minimum sebelum dipakai di toko: scan 20 produk berbeda (cahaya redup juga), cetak 5 struk (pendek dan panjang), matikan internet saat transaksi, matikan printer di tengah cetak, tutup paksa app saat bayar, pasang di 2 HP dan cek stok sinkron.
+
+Tes perangkat otomatis: sambungkan HP, lalu `flutter devices` dan `flutter test integration_test -d <serial>`. Tes memakai file `petshop_device_test.sqlite` di folder dokumen aplikasi dan menghapusnya setelah selesai; database utama aplikasi tidak disentuh.
 
 ## 8. Keamanan dan Operasional
 

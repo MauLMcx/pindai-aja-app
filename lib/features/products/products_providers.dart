@@ -25,6 +25,10 @@ class ProductListItem {
     this.unitName,
     this.unitFactor,
     this.buyPrice,
+    this.sellUnitId,
+    this.sellUnitName,
+    this.sellFactor,
+    this.sellPrice,
   });
 
   final String id;
@@ -38,6 +42,12 @@ class ProductListItem {
   final String? unitName;
   final int? unitFactor;
   final int? buyPrice;
+
+  /// Satuan jual bawaan (dipakai layar kasir).
+  final String? sellUnitId;
+  final String? sellUnitName;
+  final int? sellFactor;
+  final int? sellPrice;
 }
 
 /// Produk aktif yang belum dihapus, lengkap dengan harga beli terakhir.
@@ -60,6 +70,10 @@ Stream<List<ProductListItem>> watchProductList(AppDatabase db, String storeId) {
                s.name AS supplier_name,
                pu.unit_name AS unit_name,
                pu.factor_to_base AS unit_factor,
+               su.id AS sell_unit_id,
+               su.unit_name AS sell_unit_name,
+               su.factor_to_base AS sell_factor,
+               su.sell_price AS sell_price,
                (SELECT ph.price
                   FROM price_history ph
                  WHERE ph.product_unit_id = pu.id AND ph.kind = 'buy'
@@ -72,6 +86,8 @@ Stream<List<ProductListItem>> watchProductList(AppDatabase db, String storeId) {
           LEFT JOIN suppliers s ON s.id = p.main_supplier_id
           LEFT JOIN product_units pu
                  ON pu.product_id = p.id AND pu.is_default_purchase = 1
+          LEFT JOIN product_units su
+                 ON su.product_id = p.id AND su.is_default_sale = 1
          WHERE p.store_id = ? AND p.deleted_at IS NULL
          ORDER BY p.name COLLATE NOCASE, p.variant COLLATE NOCASE
         ''',
@@ -100,6 +116,10 @@ Stream<List<ProductListItem>> watchProductList(AppDatabase db, String storeId) {
                 unitName: row.readNullable<String>('unit_name'),
                 unitFactor: row.readNullable<int>('unit_factor'),
                 buyPrice: row.readNullable<int>('buy_price'),
+                sellUnitId: row.readNullable<String>('sell_unit_id'),
+                sellUnitName: row.readNullable<String>('sell_unit_name'),
+                sellFactor: row.readNullable<int>('sell_factor'),
+                sellPrice: row.readNullable<int>('sell_price'),
               ),
             )
             .toList(),

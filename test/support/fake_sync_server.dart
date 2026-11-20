@@ -2,7 +2,7 @@ import 'package:petshop_pos/core/sync/sync_api.dart';
 
 /// Server sinkron palsu untuk tes klien (tanpa Supabase).
 ///
-/// Meniru perilaku penting migrasi 0002:
+/// Meniru perilaku penting migrasi `0003_sync_rpc`–`0005_sync_push_robust`:
 ///   * `op_id` idempoten,
 ///   * barcode unik per toko,
 ///   * data master last-write-wins,
@@ -31,16 +31,17 @@ class FakeSyncServer implements SyncApi {
   Map<String, Object?>? row(String table, String id) => tables[table]?[id];
 
   @override
-  Future<List<SyncPushResult>> push(List<SyncPushOp> ops) async {
+  Future<List<PushOutcome>> push(List<SyncOp> ops) async {
     if (failNextPush) {
       failNextPush = false;
       throw const SyncNetworkException('Jaringan putus (simulasi).');
     }
 
-    final results = <SyncPushResult>[];
+    final results = <PushOutcome>[];
     for (final op in ops) {
+      // Idempoten: op yang sudah pernah diterapkan dijawab `skipped`.
       if (applied.contains(op.opId)) {
-        results.add(SyncPushResult(opId: op.opId, status: 'duplicate'));
+        results.add(PushOutcome(opId: op.opId, status: 'skipped'));
         continue;
       }
 
@@ -48,10 +49,9 @@ class FakeSyncServer implements SyncApi {
       if (op.table == 'stores') {
         if (payload['id'] != storeId) {
           results.add(
-            SyncPushResult(
+            PushOutcome(
               opId: op.opId,
               status: 'error',
-              code: '42501',
               error: 'toko tidak cocok',
             ),
           );
@@ -59,10 +59,9 @@ class FakeSyncServer implements SyncApi {
         }
       } else if (payload['store_id'] != storeId) {
         results.add(
-          SyncPushResult(
+          PushOutcome(
             opId: op.opId,
             status: 'error',
-            code: '42501',
             error: 'data bukan milik toko',
           ),
         );
@@ -77,10 +76,9 @@ class FakeSyncServer implements SyncApi {
         );
         if (duplicate) {
           results.add(
-            SyncPushResult(
+            PushOutcome(
               opId: op.opId,
               status: 'error',
-              code: '23505',
               error: 'duplicate key value violates unique constraint',
             ),
           );
@@ -110,18 +108,18 @@ class FakeSyncServer implements SyncApi {
       }
 
       applied.add(op.opId);
-      results.add(SyncPushResult(opId: op.opId, status: 'applied'));
+      results.add(PushOutcome(opId: op.opId, status: 'applied'));
     }
 
     return results;
   }
 
   @override
-  Future<List<Map<String, dynamic>>> pull({
-    required String table,
-    required int sinceSeq,
-    int limit = 500,
-  }) async {
+  Future<List<Map<String, dynamic>>> pull(
+    String table,
+    int sinceSeq,
+    int limit,
+  ) async {
     if (failPullAtCall >= 0 && pullCalls >= failPullAtCall) {
       pullCalls++;
       throw const SyncNetworkException('Jaringan putus saat tarik data.');

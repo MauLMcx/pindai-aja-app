@@ -258,6 +258,24 @@ create view stock_balance as
 
 **Pull:** `sync_pull(table, since_seq, limit=500)` mengembalikan baris dengan `server_seq > since_seq`. Klien melakukan upsert, lalu menyimpan `last_pulled_seq`. Ulangi sampai kosong.
 
+**Bentuk op (implementasi `0003_sync_rpc`–`0005_sync_push_robust`):**
+
+```json
+{ "op_id": "uuid", "table": "products", "row_id": "uuid",
+  "op": "insert | update | upsert | delete", "payload": { "...": "kolom baris" } }
+```
+
+`sync_push` membalas array `{ "op_id", "status": "applied | skipped | error", "error"? }`. Aturan server:
+
+- `op_id` yang sudah tercatat di `applied_ops` → `skipped` (idempoten, P8).
+- `payload.store_id` (atau `payload.id` untuk `stores`) wajib sama dengan toko pengguna; selain itu `error`.
+- `insert` memakai `on conflict (pk) do nothing`; pelanggaran unique lain (mis. barcode ganda) menghasilkan `error` dan **tidak** menimpa baris lama.
+- `delete` hanya mengisi `deleted_at`; tabel ledger tanpa `deleted_at` ditolak.
+- `profiles` tidak disinkronkan (dikelola server); daftar tabel ada di `sync_allowed_tables()`.
+- Hanya role `authenticated` yang boleh memanggil RPC; `applied_ops` tidak bisa dibaca langsung (RLS tanpa policy).
+- `sync_pull` berjalan dengan hak pengguna (RLS) dan menambahkan filter `store_id` eksplisit sebagai lapisan kedua.
+- Satu op yang gagal (termasuk `op_id` tidak valid) hanya menghasilkan `error` untuk op itu; op lain dalam batch tetap diterapkan.
+
 **Pemicu sinkron:** setelah setiap transaksi lokal, saat konektivitas kembali, saat app dibuka/kembali ke depan, dan periodik tiap beberapa menit. Realtime Supabase **tidak wajib**.
 
 **Aturan konflik:**
@@ -344,7 +362,7 @@ Setiap tahap harus ditutup dengan: semua KP lulus, `dart analyze` bersih, tes un
 | 5 | QRIS/e-wallet/transfer/kartu (pencatatan; gateway opsional) | Pembayaran campuran tercatat benar |
 | 6 | Web admin (laporan, produk) | Laporan dapat dibuka dari laptop |
 
-Status 2026-11-19: Tahap 3 sisi klien dan migrasi server (`0002_sync.sql`) sudah ditulis. Skenario sinkron diuji dengan server palsu: S1, S2, S3, S4, S6, S7, S8 lulus sebagai tes otomatis. Uji ke proyek Supabase DEV (termasuk tes RLS SQL) belum dijalankan karena kredensial proyek belum tersedia. S5 baru diuji pada atomisitas transaksi SQLite; S9 dan S10 menunggu fitur kasir/printer dan opname.
+Status 2026-11-20: Tahap 3 sisi klien selesai (layar masuk, peran, antrean sinkron, backup) dan server memakai rantai migrasi `0003_sync_rpc`–`0005_sync_push_robust` yang sudah punya tes RLS. Skenario sinkron diuji dengan server palsu: S1, S2, S3, S4, S6, S7, S8 lulus sebagai tes otomatis. Uji ke proyek Supabase DEV (termasuk tes RLS SQL) belum dijalankan karena kredensial proyek belum tersedia. S5 diuji pada atomisitas transaksi SQLite; S9 dan S10 menunggu printer dan opname.
 
 ## 16. Skenario Uji Wajib (sinkron/offline)
 
@@ -395,3 +413,18 @@ Multi-cabang di UI, utang ke pemasok, integrasi kartu langsung, e-commerce/marke
 | 2026-11-19 | Peran `staff` tidak melihat tombol impor dan bagian backup; RLS server membatasi tulis `stores`/`profiles` hanya untuk `owner` | SPEC §5: pengaturan dan pengelolaan pengguna milik pemilik; penyembunyian HPP tetap hanya di UI sesuai catatan §5 |
 | 2026-11-19 | Backup: file JSON harian di folder dokumen app (disimpan 14 hari) + ekspor/impor manual. Tema dan ID perangkat tidak ikut diganti saat pemulihan; unggah otomatis ke Google Drive belum dikerjakan | Backup tetap jalan tanpa dependensi baru; ID perangkat harus stabil agar struk dan audit tidak berubah. Pemilik menyalin file ke Drive secara manual |
 | 2026-11-19 | `outbox` klien mendapat kolom `last_attempt_at` (Drift versi 2) untuk jeda coba ulang eksponensial | Tanpa jeda, perangkat yang offline akan menghajar server terus-menerus dan menguras baterai |
+| 2026-11-18 | Migrasi server dijalankan berurutan: `0001_init`, lalu `0002_security_hardening`; view `stock_balance` diubah menjadi `security_invoker` | Advisor Supabase menemukan view berjalan dengan hak pemilik sehingga bisa melewati RLS dan membocorkan stok antar-toko. View wajib mengikuti RLS pengguna |
+| 2026-11-18 | Tes RLS memakai dua pengguna Auth uji (`rls-test-a@example.test`, `rls-test-b@example.test`) dan dua toko uji di proyek dev; tes juga memeriksa isolasi view `stock_balance` | Membuktikan isolasi antar-toko pada tabel dan view. Data uji hanya di proyek dev, bukan data toko sungguhan |
+| 2026-11-18 | Proteksi kata sandi bocor (HaveIBeenPwned) tidak diaktifkan | Fitur ini hanya tersedia di paket Pro; proyek memakai paket gratis. Dicatat sebagai risiko yang diterima sampai ada anggaran |
+| 2026-11-18 | RPC sinkron: `sync_push` SECURITY DEFINER dengan validasi toko eksplisit; `sync_pull` SECURITY INVOKER + filter `store_id`; `applied_ops` RLS tanpa policy | Push perlu menulis banyak tabel dalam satu panggilan, jadi hak pemilik dipakai tetapi toko divalidasi per op. Pull cukup mengandalkan RLS pengguna. `applied_ops` hanya untuk idempotensi internal |
+| 2026-11-18 | `sync_push` tidak menyinkronkan `profiles` dan menolak tabel di luar `sync_allowed_tables()` | Profil dibuat/dikelola server (peran & toko); daftar tertutup mencegah klien menulis tabel internal |
+| 2026-11-18 | Barcode ganda dari klien ditolak sebagai `error`, bukan ditimpa | Sesuai §8: server menolak yang kedua dan klien menampilkan antrean "Perlu diselesaikan" |
+| 2026-11-18 | `EXECUTE` pada `sync_push`/`sync_pull` dicabut dari `anon` (migrasi `0004_sync_grants`) | Default privileges Supabase memberi akses ke anon; RPC sinkron hanya untuk pengguna login |
+| 2026-11-18 | HPP rata-rata bergerak dihitung dengan menelusuri seluruh ledger stok berurutan (`occurred_at`, lalu `id`) dan memakai stok berjalan, sesuai rumus §6.3; hasilnya disimpan sebagai snapshot `sale_items.cost_per_base` | Menghindari HPP berubah saat laporan dibuka di kemudian hari, dan tetap benar bila ada penjualan di antara dua pembelian |
+| 2026-11-18 | Nomor struk lokal: `<kode perangkat>-<yyyyMMdd>-<counter 4 digit>`, counter disimpan di `app_settings` per perangkat dan per hari | Sesuai P3; tidak butuh server dan tetap unik saat dua perangkat offline. Reset harian membuat nomor pendek dan mudah dibaca |
+| 2026-11-18 | Pull klien memakai `customInsert` dengan SQL `insert ... on conflict (pk) do update` dan binding `Variable` bertipe | `insertOnConflictUpdate(RawValuesInsertable)` gagal validasi runtime Drift (`RawValuesInsertable<Object?> is not a subtype of Insertable<T>`). SQL eksplisit mendukung primary key gabungan (`app_settings`) dan tetap memetakan tipe kolom |
+| 2026-11-19 | Kasir Tahap 1 baru melayani tunai dengan satuan jual bawaan: pilih produk, ubah jumlah, bayar tunai, struk di layar. Diskon, pelanggan, split, hold, void, scan kamera, dan printer ditunda ke tahap berikutnya | SPEC §6.4 menyebut semuanya, tetapi inti "jual tanpa internet" (§16) bisa dipakai lebih dulu. Kamera dan printer hanya bisa diuji manual, jadi tidak diklaim selesai |
+| 2026-11-19 | Saat produk tanpa harga jual dipilih di kasir, harga ditanyakan sekali lalu disimpan ke `product_units.sell_price` + `price_history` jenis `sell` + outbox. `needs_price_review` dilepas bila semua satuan jual berharga | Pemilik harus tetap bisa menjual barang yang harganya belum diisi saat impor; riwayat harga menjaga jejak perubahan dan antrean sinkron tetap lengkap |
+| 2026-11-20 | Dua implementasi klien sinkron yang tumbuh paralel digabung: kontrak `SyncOp`/`PushOutcome` (sesuai `0003`–`0005`) dipakai sebagai satu-satunya tipe, dan `SyncEngine` (backoff + pencatat konflik) memakai kontrak itu. `SyncService` lama tetap ada untuk tes, tetapi hanya `SyncEngine` yang dipasang di UI | Menghindari dua mesin mengirim `outbox` yang sama dan memastikan klien cocok dengan signature RPC nyata (`p_since_seq`, status `skipped`) |
+| 2026-11-20 | Migrasi `0002_sync.sql` dan `supabase/seed/0001_store.sql` dari cabang lama dihapus; server memakai rantai `0001`–`0005` yang sudah diuji RLS-nya | Dua migrasi `0002` yang sama-sama membuat `applied_ops` akan gagal saat `db push`; seed profil akan gagal karena `profiles.user_id` merujuk `auth.users` |
+| 2026-11-20 | Identitas perangkat hanya dibuat oleh `ensureDeviceIdentity` (disimpan di `app_settings`), dan `ensureLocalIdentity` memakai fungsi itu. Kode perangkat `HP` + 6 karakter | Dua pembuat identitas menghasilkan dua baris `devices` dan nomor struk yang berbeda untuk HP yang sama |

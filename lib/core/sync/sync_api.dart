@@ -1,6 +1,9 @@
-/// Operasi yang dikirim ke server.
-class SyncPushOp {
-  const SyncPushOp({
+/// Kontrak transport sinkron. Implementasi nyata memakai Supabase RPC;
+/// tes memakai implementasi palsu tanpa jaringan.
+library;
+
+class SyncOp {
+  const SyncOp({
     required this.opId,
     required this.table,
     required this.rowId,
@@ -23,22 +26,24 @@ class SyncPushOp {
   };
 }
 
-class SyncPushResult {
-  const SyncPushResult({
-    required this.opId,
-    required this.status,
-    this.error,
-    this.code,
-  });
+class PushOutcome {
+  const PushOutcome({required this.opId, required this.status, this.error});
 
   final String opId;
-
-  /// `applied`, `duplicate`, atau `error`.
   final String status;
   final String? error;
-  final String? code;
 
-  bool get isOk => status == 'applied' || status == 'duplicate';
+  /// `applied` dan `skipped` berarti server sudah menerima operasi ini.
+  /// `skipped` dipakai untuk op yang sudah pernah diterapkan (idempoten).
+  bool get isApplied => status == 'applied' || status == 'skipped';
+
+  factory PushOutcome.fromJson(Map<String, dynamic> json) {
+    return PushOutcome(
+      opId: json['op_id']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'error',
+      error: json['error']?.toString(),
+    );
+  }
 }
 
 /// Kegagalan jaringan saat sinkron. Pesannya aman ditampilkan ke pengguna.
@@ -51,14 +56,13 @@ class SyncNetworkException implements Exception {
   String toString() => message;
 }
 
-/// Komunikasi sinkron dengan server. Dipisah agar mudah diuji dengan server palsu.
-abstract class SyncApi {
-  Future<List<SyncPushResult>> push(List<SyncPushOp> ops);
+abstract interface class SyncApi {
+  Future<List<PushOutcome>> push(List<SyncOp> ops);
 
-  /// Baris dengan `server_seq > sinceSeq`, urut naik.
-  Future<List<Map<String, dynamic>>> pull({
-    required String table,
-    required int sinceSeq,
-    int limit = 500,
-  });
+  /// Mengambil baris tabel dengan `server_seq > sinceSeq`.
+  Future<List<Map<String, dynamic>>> pull(
+    String table,
+    int sinceSeq,
+    int limit,
+  );
 }
