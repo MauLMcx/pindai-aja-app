@@ -7,6 +7,7 @@ import '../../core/store/local_store.dart';
 import 'opname_service.dart';
 import 'product_picker.dart';
 import 'stock_providers.dart';
+import 'stock_queries.dart';
 
 /// Layar hitung satu sesi opname (SPEC §6.8).
 class OpnameDetailScreen extends ConsumerWidget {
@@ -14,17 +15,26 @@ class OpnameDetailScreen extends ConsumerWidget {
     super.key,
     required this.opnameId,
     required this.isOpen,
+    this.scope,
   });
 
   final String opnameId;
   final bool isOpen;
+  final String? scope;
 
   Future<void> _count(
     BuildContext context,
     WidgetRef ref,
     List<OpnameItemRow> existing,
   ) async {
-    final product = await showProductPicker(context, title: 'Hitung barang');
+    final scopeOption = parseOpnameScope(scope);
+    final product = await showProductPicker(
+      context,
+      title: 'Hitung barang',
+      shelfLocation: scopeOption.shelfLocation,
+      categoryName: scopeOption.categoryName,
+      scopeLabel: scopeOption.isWholeStore ? null : scopeOption.label,
+    );
     if (product == null || !context.mounted) return;
 
     OpnameItemRow? previous;

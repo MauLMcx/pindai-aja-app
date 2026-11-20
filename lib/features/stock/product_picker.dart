@@ -5,21 +5,38 @@ import '../../core/db/database_provider.dart';
 import 'stock_queries.dart';
 
 /// Membuka pemilih produk. Mengembalikan `null` bila dibatalkan.
+/// `shelfLocation`/`categoryName` membatasi daftar (mis. cakupan opname).
 Future<ProductChoice?> showProductPicker(
   BuildContext context, {
   String title = 'Pilih produk',
+  String? shelfLocation,
+  String? categoryName,
+  String? scopeLabel,
 }) {
   return Navigator.of(context).push<ProductChoice>(
     MaterialPageRoute<ProductChoice>(
-      builder: (_) => _ProductPickerPage(title: title),
+      builder: (_) => _ProductPickerPage(
+        title: title,
+        shelfLocation: shelfLocation,
+        categoryName: categoryName,
+        scopeLabel: scopeLabel,
+      ),
     ),
   );
 }
 
 class _ProductPickerPage extends ConsumerStatefulWidget {
-  const _ProductPickerPage({required this.title});
+  const _ProductPickerPage({
+    required this.title,
+    this.shelfLocation,
+    this.categoryName,
+    this.scopeLabel,
+  });
 
   final String title;
+  final String? shelfLocation;
+  final String? categoryName;
+  final String? scopeLabel;
 
   @override
   ConsumerState<_ProductPickerPage> createState() => _ProductPickerPageState();
@@ -43,7 +60,12 @@ class _ProductPickerPageState extends ConsumerState<_ProductPickerPage> {
 
   Future<List<ProductChoice>> _load(String term) {
     final db = ref.read(appDatabaseProvider);
-    return loadProductChoices(db, search: term.trim().isEmpty ? null : term);
+    return loadProductChoices(
+      db,
+      search: term.trim().isEmpty ? null : term,
+      shelfLocation: widget.shelfLocation,
+      categoryName: widget.categoryName,
+    );
   }
 
   @override
@@ -66,6 +88,22 @@ class _ProductPickerPageState extends ConsumerState<_ProductPickerPage> {
               onChanged: (value) => setState(() => _future = _load(value)),
             ),
           ),
+          if (widget.scopeLabel != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.filter_alt_outlined, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Cakupan: ${widget.scopeLabel}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: FutureBuilder<List<ProductChoice>>(
               future: _future,

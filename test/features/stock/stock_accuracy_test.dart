@@ -191,6 +191,42 @@ void main() {
     expect(none, isEmpty);
   });
 
+  test('cakupan opname menyaring pilihan produk per rak', () async {
+    await addProduct(
+      db,
+      storeId: store.id,
+      name: 'Whiskas Tuna',
+      shelfLocation: 'Rak A-1',
+    );
+    await addProduct(
+      db,
+      storeId: store.id,
+      name: 'Meo Ikan',
+      shelfLocation: 'Rak B-2',
+    );
+
+    final options = await loadOpnameScopeOptions(db);
+    expect(options.first.label, 'Seluruh toko');
+    expect(options.map((option) => option.label), contains('Rak A-1'));
+    expect(options.map((option) => option.label), contains('Rak B-2'));
+
+    final scope = parseOpnameScope('Rak A-1');
+    expect(scope.shelfLocation, 'Rak A-1');
+    expect(scope.categoryName, isNull);
+
+    final choices = await loadProductChoices(
+      db,
+      shelfLocation: scope.shelfLocation,
+      categoryName: scope.categoryName,
+    );
+    expect(choices, hasLength(1));
+    expect(choices.single.name, 'Whiskas Tuna');
+
+    expect(parseOpnameScope('Seluruh toko').isWholeStore, isTrue);
+    expect(parseOpnameScope(null).isWholeStore, isTrue);
+    expect(parseOpnameScope('Kategori Pakan').categoryName, 'Pakan');
+  });
+
   test('riwayat harga menampilkan pembelian terbaru di atas', () async {
     final product = await addProduct(db, storeId: store.id, name: 'Meo');
 

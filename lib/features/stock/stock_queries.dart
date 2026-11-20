@@ -279,11 +279,14 @@ where p.deleted_at is null and p.is_active = 1
 ''';
 
 /// Daftar stok semua produk aktif. `search` mencocokkan nama, merek, varian,
-/// atau barcode satuan.
+/// atau barcode satuan. Bisa dibatasi per lokasi rak atau nama kategori
+/// (dipakai cakupan opname, SPEC §6.8).
 Future<List<StockRow>> loadStockRows(
   AppDatabase db, {
   String? search,
   bool lowOnly = false,
+  String? shelfLocation,
+  String? categoryName,
 }) async {
   final term = search?.trim() ?? '';
   final variables = <Variable<Object>>[];
@@ -298,6 +301,21 @@ Future<List<StockRow>> loadStockRows(
                     and coalesce(u.barcode, '') like ?))
 ''';
     variables.addAll(List<Variable<Object>>.filled(4, Variable<String>(like)));
+  }
+
+  final shelf = shelfLocation?.trim() ?? '';
+  if (shelf.isNotEmpty) {
+    where += '\n  and p.shelf_location = ? ';
+    variables.add(Variable<String>(shelf));
+  }
+
+  final category = categoryName?.trim() ?? '';
+  if (category.isNotEmpty) {
+    where += '''
+  and p.category_id in (select c.id from categories c
+                        where c.deleted_at is null and c.name = ?)
+''';
+    variables.add(Variable<String>(category));
   }
 
   final having = lowOnly
@@ -394,8 +412,15 @@ Future<List<ProductChoice>> loadProductChoices(
   AppDatabase db, {
   String? search,
   int limit = 300,
+  String? shelfLocation,
+  String? categoryName,
 }) async {
-  final rows = await loadStockRows(db, search: search);
+  final rows = await loadStockRows(
+    db,
+    search: search,
+    shelfLocation: shelfLocation,
+    categoryName: categoryName,
+  );
   final selected = rows.take(limit).toList();
   if (selected.isEmpty) return const [];
 
@@ -702,4 +727,62 @@ Future<List<PutawayHistoryRow>> loadPutawayHistory(
         ),
       )
       .toList();
+}
+
+/// Pilihan cakupan opname: seluruh toko, per rak, atau per kategori
+/// (SPEC §6.8). Label disimpan apa adanya di `stock_opnames.scope`.
+class OpnameScopeOption {
+  const OpnameScopeOption(this.label, {this.shelfLocation, this.categoryName});
+
+  final String label;
+  final String? shelfLocation;
+  final String? categoryName;
+
+  bool get isWholeStore => shelfLocation == null && categoryName == null;
+}
+
+/// Daftar rak dan kategori yang bisa dipakai sebagai cakupan opname.
+Future<List<OpnameScopeOption>> loadOpnameScopeOptions(AppDatabase db) async {
+  final options = <OpnameScopeOption>[const OpnameScopeOption('Seluruh toko')];
+
+  final shelves = await db
+      .customSelect(
+        'select distinct trim(shelf_location) as shelf from products '
+        'where deleted_at is null and shelf_location is not null '
+        "and trim(shelf_location) <> '' order by shelf collate nocase",
+        readsFrom: {db.products},
+      )
+      .get();
+  for (final row in shelves) {
+    final shelf = row.read<String>('shelf');
+    options.add(OpnameScopeOption(shelf, shelfLocation: shelf));
+  }
+
+  final categories =
+      await (db.select(db.categories)
+            ..where((t) => t.deletedAt.isNull())
+            ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+          .get();
+  for (final category in categories) {
+    options.add(
+      OpnameScopeOption(
+        'Kategori ${category.name}',
+        categoryName: category.name,
+      ),
+    );
+  }
+
+  return options;
+}
+
+/// Menerjemahkan teks cakupan tersimpan menjadi filter produk.
+OpnameScopeOption parseOpnameScope(String? scope) {
+  final text = scope?.trim() ?? '';
+  if (text.startsWith('Rak ') && text.length > 4) {
+    return OpnameScopeOption(text, shelfLocation: text);
+  }
+  if (text.startsWith('Kategori ')) {
+    return OpnameScopeOption(text, categoryName: text.substring(9).trim());
+  }
+  return const OpnameScopeOption('Seluruh toko');
 }

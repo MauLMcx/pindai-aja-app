@@ -6,6 +6,7 @@ import '../../core/store/local_store.dart';
 import 'opname_detail_screen.dart';
 import 'opname_service.dart';
 import 'stock_providers.dart';
+import 'stock_queries.dart';
 
 /// Daftar sesi stok opname (SPEC §6.8).
 class OpnameScreen extends ConsumerWidget {
@@ -15,25 +16,26 @@ class OpnameScreen extends ConsumerWidget {
     final db = ref.read(appDatabaseProvider);
     final store = await ensureLocalStore(db);
     final note = scope.trim();
-    final opnameId = await startOpname(
-      db,
-      storeId: store.id,
-      scope: note.isEmpty ? 'Seluruh toko' : note,
-    );
+    final label = note.isEmpty ? 'Seluruh toko' : note;
+    final opnameId = await startOpname(db, storeId: store.id, scope: label);
     ref.invalidate(opnameSummariesProvider);
     if (!context.mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => OpnameDetailScreen(opnameId: opnameId, isOpen: true),
+        builder: (_) =>
+            OpnameDetailScreen(opnameId: opnameId, isOpen: true, scope: label),
       ),
     );
     ref.invalidate(opnameSummariesProvider);
   }
 
   Future<void> _askStart(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(appDatabaseProvider);
+    final options = await loadOpnameScopeOptions(db);
+    if (!context.mounted) return;
     final scope = await showDialog<String>(
       context: context,
-      builder: (_) => const _StartOpnameDialog(),
+      builder: (_) => _StartOpnameDialog(options: options),
     );
     if (scope == null || !context.mounted) return;
     try {
@@ -101,6 +103,7 @@ class OpnameScreen extends ConsumerWidget {
                       builder: (_) => OpnameDetailScreen(
                         opnameId: item.id,
                         isOpen: item.isOpen,
+                        scope: item.scope,
                       ),
                     ),
                   );
@@ -119,42 +122,63 @@ class OpnameScreen extends ConsumerWidget {
 /// di-dispose saat rute dialog benar-benar selesai (bukan tepat setelah
 /// `showDialog` mengembalikan hasil).
 class _StartOpnameDialog extends StatefulWidget {
-  const _StartOpnameDialog();
+  const _StartOpnameDialog({required this.options});
+
+  final List<OpnameScopeOption> options;
 
   @override
   State<_StartOpnameDialog> createState() => _StartOpnameDialogState();
 }
 
 class _StartOpnameDialogState extends State<_StartOpnameDialog> {
-  final _scope = TextEditingController(text: 'Seluruh toko');
+  late String _scope;
 
   @override
-  void dispose() {
-    _scope.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _scope = widget.options.isEmpty
+        ? 'Seluruh toko'
+        : widget.options.first.label;
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Mulai stok opname'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Hitung barang fisik, lalu masukkan jumlahnya. Selisih akan '
-            'dicatat sebagai penyesuaian stok saat opname diselesaikan.',
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _scope,
-            decoration: const InputDecoration(
-              labelText: 'Cakupan (opsional)',
-              hintText: 'Contoh: Seluruh toko atau Rak A',
-              border: OutlineInputBorder(),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Hitung barang fisik, lalu masukkan jumlahnya. Selisih akan '
+              'dicatat sebagai penyesuaian stok saat opname diselesaikan.',
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Cakupan',
+                border: OutlineInputBorder(),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _scope,
+                  items: [
+                    for (final option in widget.options)
+                      DropdownMenuItem(
+                        value: option.label,
+                        child: Text(option.label),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _scope = value);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -162,7 +186,7 @@ class _StartOpnameDialogState extends State<_StartOpnameDialog> {
           child: const Text('Batal'),
         ),
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(_scope.text),
+          onPressed: () => Navigator.of(context).pop(_scope),
           child: const Text('Mulai'),
         ),
       ],
